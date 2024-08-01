@@ -64,7 +64,7 @@ uint64_t ReshardingCostMatrix::CostAt(int r, int c) {
 
 std::string ReshardingCostMatrix::ToString() {
 
-  std::string s = "";
+  std::string s = "[" + std::to_string(num_rows_) + "," + std::to_string(num_cols_) + "]" + "\n";
   for (int r = 0; r < num_rows(); r++) {
     for (int c = 0; c < num_cols(); c++) {
       s += UIntToShortString(costs_[r][c]) + " ";
