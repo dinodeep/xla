@@ -5,7 +5,7 @@
 #include "xla/service/experimental/device_mesh.h"
 #include "xla/hlo/ir/hlo_sharding.h"
 
-#define DEBUG_SINGLE_DIMENSION_SHARDING_
+// #define DEBUG_SINGLE_DIMENSION_SHARDING_
 
 namespace xla {
 
