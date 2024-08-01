@@ -66,6 +66,9 @@ absl::StatusOr<bool> AutoParallelizer::Run(
   bool successful = selector.Select(info_map);
   VLOG(5) << "Selector success: " << successful;
 
+  assert(0);
+  PrintModuleInfo(module);
+
   VLOG(5) << "Done AutoParallelizer Run";
   
   return true;
