@@ -5,6 +5,8 @@
 #include "xla/service/experimental/device_mesh.h"
 #include "xla/hlo/ir/hlo_sharding.h"
 
+#define DEBUG_SINGLE_DIMENSION_SHARDING_
+
 namespace xla {
 
 // enumerate sharding from the number of dimensions in the data
@@ -30,6 +32,7 @@ std::vector<HloSharding> EnumerateShardingsFromRank(int rank) {
       tile_assignment_dims[x_idx] *= mesh_x_dim_size;
       tile_assignment_dims[y_idx] *= mesh_y_dim_size;
 
+#ifndef DEBUG_SINGLE_DIMENSION_SHARDING_
       // NOTE: intentionally may add two shardings if x_idx == y_idx
       // (i.e. when sharding a single data dimension on all devices)
       // because ordering of machines may influence resulting communication
@@ -49,6 +52,15 @@ std::vector<HloSharding> EnumerateShardingsFromRank(int rank) {
           { 1, 0 }
         ));
       }
+#else
+      if (x_idx == y_idx) {
+        shardings.push_back(HloSharding::IotaTile(
+          tile_assignment_dims,
+          { mesh_x_dim_size * mesh_y_dim_size },
+          { 0 }
+        ));
+      } 
+#endif
     }
   }
 
