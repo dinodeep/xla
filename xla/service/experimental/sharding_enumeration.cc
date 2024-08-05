@@ -4,6 +4,7 @@
 
 #include "xla/service/experimental/device_mesh.h"
 #include "xla/hlo/ir/hlo_sharding.h"
+#include "xla/hlo/ir/tile_assignment.h"
 
 // #define DEBUG_SINGLE_DIMENSION_SHARDING_
 
@@ -20,6 +21,37 @@ std::vector<HloSharding> EnumerateShardingsFromRank(int rank) {
   int mesh_x_dim_size = DeviceMesh::XDimSize();
   int mesh_y_dim_size = DeviceMesh::YDimSize();
 
+  // add all shardings that have 0 device mesh dimensions applied
+  shardings.push_back(HloSharding::Replicate());
+
+  // add all shardings that have 1 device mesh dimension applied
+  for (int data_dim_idx = 0; data_dim_idx < rank; data_dim_idx++) {
+    // construct one sharding for applying the x mesh dimension
+    // dims[rank] == the replication dimension
+    std::vector<int64_t> tile_assignment_dims_x(rank + 1, 1);
+    tile_assignment_dims_x[data_dim_idx] *= mesh_x_dim_size;
+    tile_assignment_dims_x[rank] *= mesh_y_dim_size;
+
+    shardings.push_back(HloSharding::PartialTile(TileAssignment(
+      tile_assignment_dims_x, 
+      { mesh_x_dim_size * mesh_y_dim_size },
+      { 0 }
+    )));
+
+    // construct another sharding for applying the y mesh dimension
+    std::vector<int64_t> tile_assignment_dims_y(rank + 1, 1);
+    tile_assignment_dims_y[data_dim_idx] *= mesh_y_dim_size;
+    tile_assignment_dims_y[rank] *= mesh_x_dim_size;
+
+    shardings.push_back(HloSharding::PartialTile(TileAssignment(
+      tile_assignment_dims_y,
+      { mesh_x_dim_size, mesh_y_dim_size },
+      { 1, 0 }
+    )));
+
+  }
+
+  // add all shardings that have both device mesh dimensions applied
   // note: this code is only acceptable for a 2D mesh grid,
   // would require more complicated solution for higher-dimensional grids
   for (int x_idx = 0; x_idx < rank; x_idx++) {
