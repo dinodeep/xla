@@ -130,6 +130,7 @@ cc_library(
     hdrs = ["module_cost_evaluator.h"],
     visibility = ["//visibility:private"],
     deps = [
+        "//xla/service:hlo_cost_analysis",
         "shape_utils",
         "//xla/hlo/ir:hlo"
     ]

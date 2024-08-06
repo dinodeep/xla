@@ -2,6 +2,7 @@
 
 #include "xla/service/experimental/module_cost_evaluator.h"
 
+#include "xla/service/hlo_cost_analysis.h"
 #include "xla/service/experimental/shape_utils.h"
 
 #include "tsl/platform/logging.h"
@@ -110,7 +111,17 @@ uint64_t EvaluateCommunicationCost(const HloModule* module) {
 /* Computation Evaluation */
 /**************************/
 
+uint64_t EvaluateDotFLOPs(const HloDotInstruction* instr) {
 
+  const Shape& lhs_shape = instr->operand(0)->shape();
+  const Shape& result_shape = instr->shape();
+  const DotDimensionNumbers& dnums = instr->dot_dimension_numbers();
+
+  int64_t flops = HloCostAnalysis::GetDotFlops(lhs_shape, result_shape, dnums);
+  assert(flops >= 0);
+  
+  return flops;
+}
   
 }  // namespace
 
@@ -135,9 +146,9 @@ uint64_t ModuleCostEvaluator::EvaluateFLOPs(const HloModule* module) {
     for (const HloInstruction* instr : comp->instructions()) {
       switch (instr->opcode()) {
       case HloOpcode::kDot:
-        // flops += EvaluateDotFLOPs(
-        //   static_cast<const HloDotInstruction*>(instr)
-        // );
+        flops += EvaluateDotFLOPs(
+          static_cast<const HloDotInstruction*>(instr)
+        );
         break;
       default:
         break;
