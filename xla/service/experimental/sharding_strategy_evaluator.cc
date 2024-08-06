@@ -118,13 +118,10 @@ void EvaluateShardingStrat(const HloModule* module,
 
   // now evaluate cost
   ModuleCostEvaluator evaluator;
-  strat->set_cost(evaluator.Evaluate(eval_module.get()));
-  
-  // update strat with cost and root instruction's output sharding
-  // NOTE: the eval_module after GSPMD doesn't have it's sharding
-  // in the output (i.e. root computation of entry computation) which
-  // is unexpected, I thought that GSPMD would fill that in
+  strat->set_cost(evaluator.EvaluateCommCost(eval_module.get()));
 
+  return;
+  
 }
 
 }
