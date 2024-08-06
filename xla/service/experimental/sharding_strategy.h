@@ -19,6 +19,10 @@ public:
   uint64_t cost() const { return cost_; }
   void set_cost(uint64_t cost) { cost_ = cost; }
 
+  // flops getters and setters
+  uint64_t flops() const { return flops_; }
+  void set_flops(uint64_t flops) { flops_ = flops; }
+
   // modifying the operand_shardings
   // TODO: accept a shared pointer
   void AddOpSharding(HloSharding sharding);
@@ -52,6 +56,11 @@ private:
   // after evaluating the cost of the complete HloModule after performing
   // sharding propagation through SPMD.
   uint64_t cost_;
+
+  // Number of FLOPs this sharding strategy requires on this instruction
+  // This will be assigned after eavluating the cost of the complete HloModule
+  // after performing sharding propagation and SPMD partitioning
+  uint64_t flops_;
 
   // TODO: make these shared_ptr<const HloSharding>
   // Sharding of result of computing instruction. This will be completed

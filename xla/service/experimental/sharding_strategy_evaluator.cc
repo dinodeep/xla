@@ -119,6 +119,7 @@ void EvaluateShardingStrat(const HloModule* module,
   // now evaluate cost
   ModuleCostEvaluator evaluator;
   strat->set_cost(evaluator.EvaluateCommCost(eval_module.get()));
+  // strat->set_flops(evaluator.EvaluateFLOPs(eval_module.get()));
 
   return;
   
