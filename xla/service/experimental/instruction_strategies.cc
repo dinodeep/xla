@@ -5,6 +5,7 @@
 #include "xla/service/experimental/instruction_to_module.h"
 #include "xla/service/experimental/sharding_enumeration.h"
 #include "xla/service/experimental/sharding_strategy_evaluator.h"
+#include "xla/service/experimental/module_cost_evaluator.h"
 
 namespace xla {
 
