@@ -17,7 +17,7 @@ public:
   ModuleCostEvaluator() = default;
   ~ModuleCostEvaluator() = default;
 
-  uint64_t Evaluate(const HloModule* module);
+  uint64_t EvaluateCommCost(const HloModule* module);
 };
 
 } // xla

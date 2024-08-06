@@ -105,7 +105,7 @@ namespace {
 }  // namespace
 
   // This function computes the cost of an HloModule following a cost model
-  uint64_t ModuleCostEvaluator::Evaluate(const HloModule* module) {
+  uint64_t ModuleCostEvaluator::EvaluateCommCost(const HloModule* module) {
     return EvaluateCommunicationCost(module);
   }
 
