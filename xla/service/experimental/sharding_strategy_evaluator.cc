@@ -102,12 +102,19 @@ HloSharding GetRootSharding(HloModule* module) {
 
 } // namespace
 
-// This function will evaluate the sharding strategy on the 
-// single-instruction module by applying the input shardings from the strat
-// onto the operands of the module's root instruction, running GSPMD,
-// and evaluating the communication costs of the resulting module
-// The strat parameter will be updated with this cost and the resulting
-// output sharding
+
+bool IsValidShardingStrat(const HloModule* module, ShardingStrategy* strat) {
+
+  // clone the module to avoid modifying it
+  std::unique_ptr<HloModule> module_wrapper = module->Clone();
+
+  // apply GSPMD to the module with the sharding strategy
+  ClearHloShardings(eval_module.get());
+  strat->ApplyToModule(eval_module.get());
+  // RunGSPMD()
+
+}
+
 void EvaluateShardingStrat(const HloModule* module, 
     ShardingStrategy* strat) {
 
