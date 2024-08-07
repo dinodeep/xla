@@ -7,6 +7,8 @@
 #include "xla/service/experimental/sharding_strategy_evaluator.h"
 #include "xla/service/experimental/module_cost_evaluator.h"
 
+#include <stdint.h>
+
 namespace xla {
 
 /*********************************************************/
@@ -21,6 +23,10 @@ InstructionStrategies::InstructionStrategies(HloInstruction* orig_instr)
   // all of the sharding strats
   std::unique_ptr<HloModule> single_instr_module = 
     CreateModuleFromInstruction(orig_instr);
+
+  // estimate the number of FLOPs for an unsharded module
+  ModuleCostEvaluator evaluator;
+  uint64_t unsharded_flops = evaluator.EvaluateFLOPs(single_instr_module.get());
 
   // estimate costs of each sharding strategy
   for (int i = 0; i < sharding_strats_.size(); i++) {
