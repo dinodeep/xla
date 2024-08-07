@@ -74,7 +74,7 @@ private:
   // the first sharded on device mesh dimension X and the second sharded on
   // device mes dimension Y, then this variable would be false but the 
   // instruction is to be capable of maximum parallelism
-  bool has_fully_sharded_op_;
+  bool has_fully_sharded_op_ = false;
 
   // TODO: make these shared_ptr<const HloSharding>
   // Sharding of result of computing instruction. This will be completed
