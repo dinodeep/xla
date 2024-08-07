@@ -36,6 +36,10 @@ public:
   void set_result_sharding(HloSharding result_sharding);
   std::shared_ptr<HloSharding> result_sharding() { return result_sharding_; };
 
+  // Returns whether both device dimensions are involved in the shardings
+  // that make up this sharding strategy
+  bool has_fully_sharded_op() const { return has_fully_sharded_op_; };
+
   // This function applies the sharding strategy into the 
   // HloInstruction pointed to by instr by specifying the shardings for the
   // instructions operands
@@ -61,6 +65,16 @@ private:
   // This will be assigned after eavluating the cost of the complete HloModule
   // after performing sharding propagation and SPMD partitioning
   uint64_t flops_;
+
+  // Whether this sharding strategy has a fully sharded operand within
+  // it's list of operand shardings
+  // TODO: this helps in determining whether a sharding strategy 
+  // is capable of maximum parallelism, but it signifies a subset of such
+  // sharding strategies. For example, if an HloInstruction had two operands,
+  // the first sharded on device mesh dimension X and the second sharded on
+  // device mes dimension Y, then this variable would be false but the 
+  // instruction is to be capable of maximum parallelism
+  bool has_fully_sharded_op_;
 
   // TODO: make these shared_ptr<const HloSharding>
   // Sharding of result of computing instruction. This will be completed
