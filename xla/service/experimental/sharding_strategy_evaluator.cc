@@ -15,6 +15,8 @@
 
 namespace xla {
 
+namespace {
+
 /*********************************************************/
 /* GSPMD Completion                                      */
 /*********************************************************/
@@ -97,6 +99,8 @@ HloSharding GetRootSharding(HloModule* module) {
 
   return root->sharding();
 }
+
+} // namespace
 
 // This function will evaluate the sharding strategy on the 
 // single-instruction module by applying the input shardings from the strat
