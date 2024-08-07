@@ -30,18 +30,6 @@ namespace {
 //  4. evaluate the cost of the resulting module
 //  5. figure out the output sharding of the complete module
 
-// This function clears all shardings from instructions in the module
-void ClearHloShardings(HloModule* module) {
-
-  for (HloComputation* computation : module->computations()) {
-    for (HloInstruction* instruction : computation->instructions()) {
-      instruction->clear_sharding();
-    }
-  }
-
-  return;
-}
-
 // This function runs the sharding propagation pass over an HloModule
 void RunShardingPropagation(HloModule* module) {
   // automatically complete the shardings
@@ -109,10 +97,10 @@ bool IsValidShardingStrat(const HloModule* module, ShardingStrategy* strat) {
   std::unique_ptr<HloModule> module_wrapper = module->Clone();
 
   // apply GSPMD to the module with the sharding strategy
-  ClearHloShardings(eval_module.get());
-  strat->ApplyToModule(eval_module.get());
+  strat->ApplyToModule(module_wrapper.get());
   // RunGSPMD()
 
+  return false;
 }
 
 void EvaluateShardingStrat(const HloModule* module, 
@@ -123,7 +111,6 @@ void EvaluateShardingStrat(const HloModule* module,
 
   // apply GSPMD to the module with the sharding strategy
   // TODO: should these take in unique pointers or is regulard pointer ok?
-  ClearHloShardings(eval_module.get());
   strat->ApplyToModule(eval_module.get());
   strat->set_result_sharding(RunGSPMD(eval_module.get()));
 

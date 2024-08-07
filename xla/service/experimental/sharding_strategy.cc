@@ -4,6 +4,22 @@
 
 namespace xla {
 
+namespace {
+
+// This function clears all shardings from instructions in the module
+void ClearHloShardings(HloModule* module) {
+
+  for (HloComputation* computation : module->computations()) {
+    for (HloInstruction* instruction : computation->instructions()) {
+      instruction->clear_sharding();
+    }
+  }
+
+  return;
+}
+
+} // namespace
+
 void ShardingStrategy::AddOpSharding(HloSharding sharding) {
   operand_shardings_.push_back(std::make_shared<HloSharding>(sharding));
 
@@ -29,6 +45,7 @@ void ShardingStrategy::ApplyToInstruction(HloInstruction* instr) {
 }
 
 void ShardingStrategy::ApplyToModule(HloModule* module) {
+  ClearHloShardings(module);
   ApplyToInstruction(module->entry_computation()->root_instruction()); 
   return; 
 }
