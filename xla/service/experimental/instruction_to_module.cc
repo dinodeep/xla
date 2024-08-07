@@ -95,6 +95,7 @@ std::unique_ptr<HloComputation> CreateComputationFromInstruction(
 }
 
 // Creates a module from a single instruction for running a simple pass on
+// Resulting module guaranteed to have no shardings within it
 std::unique_ptr<HloModule> CreateModuleFromInstruction(
     const HloInstruction* instruction) {
 
@@ -114,6 +115,13 @@ std::unique_ptr<HloModule> CreateModuleFromInstruction(
 
   // create a copy so it is completely separate from original module
   std::unique_ptr<HloModule> module_clone = module->Clone(); 
+
+  // remove all shardings from the original module
+  for (HloComputation* comp : module_clone->computations()) {
+    for (HloInstruction* instr : comp->instructions()) {
+      instr->clear_sharding();
+    }
+  }
 
   return module_clone;
 }

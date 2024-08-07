@@ -6,6 +6,11 @@ namespace xla {
 
 void ShardingStrategy::AddOpSharding(HloSharding sharding) {
   operand_shardings_.push_back(std::make_shared<HloSharding>(sharding));
+
+  // update whether found fully sharded operations
+  has_fully_sharded_op_ |= 
+    !sharding.IsReplicated() && !sharding.HasPartialReplication();
+  return;
 }
 
 void ShardingStrategy::set_result_sharding(HloSharding result_sharding) {
