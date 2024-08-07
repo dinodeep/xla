@@ -33,6 +33,9 @@ InstructionStrategies::InstructionStrategies(HloInstruction* orig_instr)
     EvaluateShardingStrat(single_instr_module.get(), &sharding_strats_[i]);
   }
 
+  // TODO: iterate through sharding strats and ignore those that are fully
+  // sharded but do not have an inversely proportionate number of FLOPs
+
   return;
 }
 
