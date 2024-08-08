@@ -6,10 +6,13 @@
 #include "xla/service/experimental/device_mesh.h"
 
 #include "xla/hlo/ir/hlo_instructions.h"
+#include "xla/hlo/ir/hlo_opcode.h"
 #include "xla/service/hlo_pass_interface.h"
 #include "xla/service/hlo_pass_pipeline.h"
 #include "xla/service/sharding_propagation.h"
 #include "xla/service/spmd/stateful_rng_spmd_partitioner.h"
+
+#include "xla/service/experimental/debug.h"
 
 #include "tsl/platform/errors.h"
 
@@ -75,7 +78,6 @@ HloSharding RunGSPMD(HloModule* module) {
 
   // now replace shardings with communication operations
   RunSpmdPartitioner(module);
-
   return out_sharding;
 }
 
@@ -88,19 +90,74 @@ HloSharding GetRootSharding(HloModule* module) {
   return root->sharding();
 }
 
+// Returns true if instruction is resharded by exactly 1 communication operation
+// Note: this function will return false if there are multiple users that
+// perform a resharding because that implies that the sharding for param
+// might be used in multiple ways and could intentionally be useful and not
+// simply just extra communication
+// TODO: could be a bit smarter about this, but could use this function
+// to derive the set of shardings strategies that are available in comparison
+// to a prior sharding
+bool IsInstructionResharded(HloInstruction* param,
+    std::shared_ptr<HloSharding> orig_sharding) {
+
+  // if 0 users or more than 1 user, then not just resharded
+  if (param->user_count() != 1) {
+    return false;
+  }
+
+  // get the only unique user of this instruction
+  HloInstruction* user = param->users()[0];
+
+  // now determine if it is being resharded
+  // Types fo communication primitives
+  // - all_gather
+  // - all_reduce (but this does some form of summation too)
+  // - all_to_all
+  // - broadcast
+  // - gather
+  // - scatter
+  // - slice? (this isn't really communication but it could change the sharding)
+
+  // simple implementation
+  // just return false if the use is an all-gather along some sharding dimension
+  // TODO: if all partitions were taking a slice, would that be a different
+  // resharding?
+  return user->opcode() == HloOpcode::kAllGather \
+      || user->opcode() == HloOpcode::kAllGatherStart;
+}
+
 } // namespace
 
 
-bool IsValidShardingStrat(const HloModule* module, ShardingStrategy* strat) {
+bool IsValidShardingStrat(const HloModule* wrapper_module, 
+    ShardingStrategy* strat) {
 
   // clone the module to avoid modifying it
-  std::unique_ptr<HloModule> module_wrapper = module->Clone();
+  std::unique_ptr<HloModule> module = wrapper_module->Clone();
 
   // apply GSPMD to the module with the sharding strategy
-  strat->ApplyToModule(module_wrapper.get());
-  // RunGSPMD()
+  strat->ApplyToModule(module.get());
 
-  return false;
+  // NOTE: shouldn't really be ignoring this output, poor code design
+  // would rather have you separate out the functionality of RunGSPMD
+  RunGSPMD(module.get());
+
+  // look through operands and see if it
+  HloComputation* entry_computation = module->entry_computation();
+  int num_parameters = entry_computation->num_parameters();
+  assert(num_parameters == strat->NumOpShardings());
+
+  for (int i = 0; i < num_parameters; i++) {
+    HloInstruction* param = entry_computation->parameter_instruction(i);
+    std::shared_ptr<HloSharding> orig_sharding = strat->GetOpSharding(i);
+    if (IsInstructionResharded(param, orig_sharding)) {
+      return false;
+    }
+  } 
+
+
+  return true;
 }
 
 void EvaluateShardingStrat(const HloModule* module, 
