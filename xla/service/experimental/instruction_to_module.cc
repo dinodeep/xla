@@ -65,7 +65,7 @@ std::unique_ptr<HloComputation> CreateComputationFromInstruction(
     const HloInstruction *operand = instruction->operand(i);
     HloParameterInstruction p(i, operand->shape(), operand->name());
     params.push_back(HloInstruction::CreateParameter(
-      i, operand->shape(), operand->name()
+      i, operand->shape(), "param-" + operand->name()
     ));
   }
 
