@@ -24,14 +24,15 @@ InstructionStrategies::InstructionStrategies(HloInstruction* orig_instr)
   std::unique_ptr<HloModule> single_instr_module = 
     CreateModuleFromInstruction(orig_instr);
 
+  // estimate costs of each sharding strategy
+  for (int i = 0; i < sharding_strats_.size(); i++) {
+    IsValidShardingStrat(single_instr_module.get(), &sharding_strats_[i]);
+    EvaluateShardingStrat(single_instr_module.get(), &sharding_strats_[i]);
+  }
+
   // estimate the number of FLOPs for an unsharded module
   ModuleCostEvaluator evaluator;
   uint64_t unsharded_flops = evaluator.EvaluateFLOPs(single_instr_module.get());
-
-  // estimate costs of each sharding strategy
-  for (int i = 0; i < sharding_strats_.size(); i++) {
-    EvaluateShardingStrat(single_instr_module.get(), &sharding_strats_[i]);
-  }
 
   // TODO: iterate through sharding strats and ignore those that are fully
   // sharded but do not have an inversely proportionate number of FLOPs
