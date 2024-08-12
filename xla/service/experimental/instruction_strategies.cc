@@ -16,13 +16,24 @@ namespace xla {
 /*********************************************************/
 
 InstructionStrategies::InstructionStrategies(HloInstruction* orig_instr) 
-  : orig_instr_(orig_instr),
-    sharding_strats_(EnumerateShardingStrategies(orig_instr)) {
+  : orig_instr_(orig_instr) {
 
   // create a single instruction module which will then be used for evaluating
   // all of the sharding strats
   std::unique_ptr<HloModule> single_instr_module = 
     CreateModuleFromInstruction(orig_instr);
+
+  std::vector<ShardingStrategy> potential_strats = 
+    EnumerateShardingStrategies(orig_instr);
+
+  // keep only the ones that are valid
+  for (int i = 0; i < potential_strats.size(); i++) {
+    if (IsValidShardingStrat(single_instr_module.get(), &potential_strats[i])) {
+      sharding_strats_.push_back(potential_strats[i]);
+    }
+  }
+
+  VLOG(5) << "num sharding strats: " << sharding_strats_.size();
 
   // estimate costs of each sharding strategy
   for (int i = 0; i < sharding_strats_.size(); i++) {
