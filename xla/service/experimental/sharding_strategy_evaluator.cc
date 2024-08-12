@@ -90,7 +90,7 @@ HloSharding GetRootSharding(HloModule* module) {
   return root->sharding();
 }
 
-// Returns true if instruction is resharded by exactly 1 communication operation
+// Returns true if parameter is resharded by 1 operation
 // Note: this function will return false if there are multiple users that
 // perform a resharding because that implies that the sharding for param
 // might be used in multiple ways and could intentionally be useful and not
@@ -98,8 +98,8 @@ HloSharding GetRootSharding(HloModule* module) {
 // TODO: could be a bit smarter about this, but could use this function
 // to derive the set of shardings strategies that are available in comparison
 // to a prior sharding
-bool IsInstructionResharded(HloInstruction* param,
-    std::shared_ptr<HloSharding> orig_sharding) {
+// TODO: not enough verification here, could have false positives
+bool IsDotParamResharded(HloInstruction* param) {
 
   // if 0 users or more than 1 user, then not just resharded
   if (param->user_count() != 1) {
@@ -107,30 +107,27 @@ bool IsInstructionResharded(HloInstruction* param,
   }
 
   // get the only unique user of this instruction
-  HloInstruction* user = param->users()[0];
+  HloOpcode user_op = param->users()[0]->opcode();
 
-  // now determine if it is being resharded
-  // Types fo communication primitives
-  // - all_gather
-  // - all_reduce (but this does some form of summation too)
-  // - all_to_all
-  // - broadcast
-  // - gather
-  // - scatter
-  // - slice? (this isn't really communication but it could change the sharding)
+  // From analysis of GSPMD running on modules wrapping dot products,
+  // a dot product parameter is resharded if it only has one user that is a
+  // - all gather = removes a sharding along a dimension to make it replicated
+  // - collective permute = reorders the shards among devices
+  // - slice = removes replications
+  // TODO: there are other cases where a select instruction occurs
+  // and a lot of other operations are performed, unsure if there is interest
+  // in eliminating these ones
 
-  // simple implementation
-  // just return false if the use is an all-gather along some sharding dimension
-  // TODO: if all partitions were taking a slice, would that be a different
-  // resharding?
-  return user->opcode() == HloOpcode::kAllGather \
-      || user->opcode() == HloOpcode::kAllGatherStart;
+  // simple implementation, requires more verification to be correct
+  // to function name
+  return user_op == HloOpcode::kAllGather \
+      || user_op == HloOpcode::kAllGatherStart \
+      || user_op == HloOpcode::kCollectivePermute \
+      || user_op == HloOpcode::kCollectivePermuteStart \
+      || user_op == HloOpcode::kDynamicSlice;
 }
 
-} // namespace
-
-
-bool IsValidShardingStrat(const HloModule* wrapper_module, 
+bool IsValidDotShardingStrat(const HloModule* wrapper_module, 
     ShardingStrategy* strat) {
 
   // clone the module to avoid modifying it
@@ -150,14 +147,30 @@ bool IsValidShardingStrat(const HloModule* wrapper_module,
 
   for (int i = 0; i < num_parameters; i++) {
     HloInstruction* param = entry_computation->parameter_instruction(i);
-    std::shared_ptr<HloSharding> orig_sharding = strat->GetOpSharding(i);
-    if (IsInstructionResharded(param, orig_sharding)) {
+    if (IsDotParamResharded(param)) {
       return false;
     }
   } 
 
-
   return true;
+}
+
+} // namespace
+
+bool IsValidShardingStrat(const HloModule* wrapper_module, 
+    ShardingStrategy* strat) {
+
+  // case algorithm on type of instruction
+  HloOpcode op = 
+    wrapper_module->entry_computation()->root_instruction()->opcode();
+
+  switch (op) {
+  case HloOpcode::kDot:
+    return IsValidDotShardingStrat(wrapper_module, strat);
+  default:
+    return true;
+  }
+
 }
 
 void EvaluateShardingStrat(const HloModule* module, 
