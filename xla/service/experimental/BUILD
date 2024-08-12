@@ -116,6 +116,7 @@ cc_library(
         "device_mesh",
         "module_cost_evaluator",
         "sharding_strategy",
+        "debug",
         "//xla/hlo/ir:hlo",
         "//xla/service:hlo_pass", 
         "//xla/service:hlo_pass_pipeline",

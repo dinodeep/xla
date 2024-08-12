@@ -6,14 +6,19 @@
 #include "xla/service/experimental/device_mesh.h"
 
 #include "xla/hlo/ir/hlo_instructions.h"
+#include "xla/hlo/ir/hlo_opcode.h"
 #include "xla/service/hlo_pass_interface.h"
 #include "xla/service/hlo_pass_pipeline.h"
 #include "xla/service/sharding_propagation.h"
 #include "xla/service/spmd/stateful_rng_spmd_partitioner.h"
 
+#include "xla/service/experimental/debug.h"
+
 #include "tsl/platform/errors.h"
 
 namespace xla {
+
+namespace {
 
 /*********************************************************/
 /* GSPMD Completion                                      */
@@ -27,18 +32,6 @@ namespace xla {
 //  3. run GSPMD
 //  4. evaluate the cost of the resulting module
 //  5. figure out the output sharding of the complete module
-
-// This function clears all shardings from instructions in the module
-void ClearHloShardings(HloModule* module) {
-
-  for (HloComputation* computation : module->computations()) {
-    for (HloInstruction* instruction : computation->instructions()) {
-      instruction->clear_sharding();
-    }
-  }
-
-  return;
-}
 
 // This function runs the sharding propagation pass over an HloModule
 void RunShardingPropagation(HloModule* module) {
@@ -85,7 +78,6 @@ HloSharding RunGSPMD(HloModule* module) {
 
   // now replace shardings with communication operations
   RunSpmdPartitioner(module);
-
   return out_sharding;
 }
 
@@ -98,12 +90,89 @@ HloSharding GetRootSharding(HloModule* module) {
   return root->sharding();
 }
 
-// This function will evaluate the sharding strategy on the 
-// single-instruction module by applying the input shardings from the strat
-// onto the operands of the module's root instruction, running GSPMD,
-// and evaluating the communication costs of the resulting module
-// The strat parameter will be updated with this cost and the resulting
-// output sharding
+// Returns true if parameter is resharded by 1 operation
+// Note: this function will return false if there are multiple users that
+// perform a resharding because that implies that the sharding for param
+// might be used in multiple ways and could intentionally be useful and not
+// simply just extra communication
+// TODO: could be a bit smarter about this, but could use this function
+// to derive the set of shardings strategies that are available in comparison
+// to a prior sharding
+// TODO: not enough verification here, could have false positives
+bool IsDotParamResharded(HloInstruction* param) {
+
+  // if 0 users or more than 1 user, then not just resharded
+  if (param->user_count() != 1) {
+    return false;
+  }
+
+  // get the only unique user of this instruction
+  HloOpcode user_op = param->users()[0]->opcode();
+
+  // From analysis of GSPMD running on modules wrapping dot products,
+  // a dot product parameter is resharded if it only has one user that is a
+  // - all gather = removes a sharding along a dimension to make it replicated
+  // - collective permute = reorders the shards among devices
+  // - slice = removes replications
+  // TODO: there are other cases where a select instruction occurs
+  // and a lot of other operations are performed, unsure if there is interest
+  // in eliminating these ones
+
+  // simple implementation, requires more verification to be correct
+  // to function name
+  return user_op == HloOpcode::kAllGather \
+      || user_op == HloOpcode::kAllGatherStart \
+      || user_op == HloOpcode::kCollectivePermute \
+      || user_op == HloOpcode::kCollectivePermuteStart \
+      || user_op == HloOpcode::kDynamicSlice;
+}
+
+bool IsValidDotShardingStrat(const HloModule* wrapper_module, 
+    ShardingStrategy* strat) {
+
+  // clone the module to avoid modifying it
+  std::unique_ptr<HloModule> module = wrapper_module->Clone();
+
+  // apply GSPMD to the module with the sharding strategy
+  strat->ApplyToModule(module.get());
+
+  // NOTE: shouldn't really be ignoring this output, poor code design
+  // would rather have you separate out the functionality of RunGSPMD
+  RunGSPMD(module.get());
+
+  // look through operands and see if it
+  HloComputation* entry_computation = module->entry_computation();
+  int num_parameters = entry_computation->num_parameters();
+  assert(num_parameters == strat->NumOpShardings());
+
+  for (int i = 0; i < num_parameters; i++) {
+    HloInstruction* param = entry_computation->parameter_instruction(i);
+    if (IsDotParamResharded(param)) {
+      return false;
+    }
+  } 
+
+  return true;
+}
+
+} // namespace
+
+bool IsValidShardingStrat(const HloModule* wrapper_module, 
+    ShardingStrategy* strat) {
+
+  // case algorithm on type of instruction
+  HloOpcode op = 
+    wrapper_module->entry_computation()->root_instruction()->opcode();
+
+  switch (op) {
+  case HloOpcode::kDot:
+    return IsValidDotShardingStrat(wrapper_module, strat);
+  default:
+    return true;
+  }
+
+}
+
 void EvaluateShardingStrat(const HloModule* module, 
     ShardingStrategy* strat) {
 
@@ -112,7 +181,6 @@ void EvaluateShardingStrat(const HloModule* module,
 
   // apply GSPMD to the module with the sharding strategy
   // TODO: should these take in unique pointers or is regulard pointer ok?
-  ClearHloShardings(eval_module.get());
   strat->ApplyToModule(eval_module.get());
   strat->set_result_sharding(RunGSPMD(eval_module.get()));
 
