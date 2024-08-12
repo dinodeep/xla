@@ -33,8 +33,6 @@ InstructionStrategies::InstructionStrategies(HloInstruction* orig_instr)
     }
   }
 
-  VLOG(5) << "num sharding strats: " << sharding_strats_.size();
-
   // estimate costs of each sharding strategy
   for (int i = 0; i < sharding_strats_.size(); i++) {
     EvaluateShardingStrat(single_instr_module.get(), &sharding_strats_[i]);
