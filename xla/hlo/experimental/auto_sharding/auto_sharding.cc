@@ -4258,6 +4258,10 @@ absl::StatusOr<AutoShardingResult> AutoShardingImplementation::RunAutoSharding(
                            : AutoShardingResult::kModuleUnchanged;
 }
 
+/****************************************/
+/* Helper methods for AutoSharding::Run */
+/****************************************/
+
 bool ModuleHasUserShardings(const HloModule* module) {
   bool has_shardings = false;
   for (auto computation : module->computations()) {
@@ -4642,6 +4646,10 @@ absl::StatusOr<bool> AutoSharding::Run(
 
   return module_is_changed;
 }
+
+/****************************************/
+/* AutoSharding::Run                    */
+/****************************************/
 
 absl::StatusOr<bool> DummyAutoSharding::Run(
     HloModule* module,
