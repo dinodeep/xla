@@ -4274,6 +4274,8 @@ bool ModuleHasUserShardings(const HloModule* module) {
   return has_shardings;
 }
 
+// returns true if exists an instruction that is a specific custom call
+// that goes between full and sharded shapes
 bool ModuleIsManuallyPartitioned(const HloModule* module) {
   for (const HloComputation* computation : module->computations()) {
     for (const HloInstruction* instruction : computation->instructions()) {
@@ -4329,6 +4331,7 @@ std::unique_ptr<HloModule> CloneModule(const HloModule* module) {
 AutoSharding::AutoSharding(const AutoShardingOption& option)
     : option_(option) {}
 
+// NOTE: primary entry point into AutoSharding API
 absl::StatusOr<bool> AutoSharding::Run(
     HloModule* module,
     const absl::flat_hash_set<absl::string_view>& execution_threads) {
@@ -4337,6 +4340,7 @@ absl::StatusOr<bool> AutoSharding::Run(
   }
   LOG(INFO) << "Starting the auto sharding pass";
 
+  // NOTE: checks
   if (ShardedOnTooManyMeshAxes(*module)) {
     LOG(FATAL) << "The input module contains sharding annotations "  // Crash OK
                   "over a mesh with too many axes (>2). This case is currently "
@@ -4346,6 +4350,7 @@ absl::StatusOr<bool> AutoSharding::Run(
 
   // TODO(b/332951306): Remove this check once nested tuples are supported
   // everywhere
+  // NOTE: checks
   if (HasUnsupportedNestedTuples(*module)) {
     LOG(FATAL) << "The input module contains nested tuples "  // Crash OK
                   "which we do not currently support well. See b/332951306 to "
@@ -4363,11 +4368,13 @@ absl::StatusOr<bool> AutoSharding::Run(
   metrics::RecordAutoShardingInvocations();
 #endif
 
+  // NOTE: graph simplification
   TF_RETURN_IF_ERROR(module->RemoveUnusedComputations());
 
   TF_RETURN_IF_ERROR(option_.CheckAndSetup());
   LOG(INFO) << "AutoShardingOptions:\n" << option_.ToString();
 
+  // NOTE: relpicating small pieces of data
   absl::flat_hash_set<std::string> replicated_small_tensors;
   if (option_.small_tensor_byte_size > 0) {
     for (auto computation : module->computations()) {
@@ -4386,6 +4393,7 @@ absl::StatusOr<bool> AutoSharding::Run(
     }
   }
 
+  // NOTE: determining some combination of mesh shapes to try for AutoSharding
   bool module_is_manually_partitioned = ModuleIsManuallyPartitioned(module);
   std::vector<std::vector<int64_t>> mesh_shapes;
   if (option_.try_multiple_mesh_shapes || module_is_manually_partitioned) {
@@ -4405,6 +4413,8 @@ absl::StatusOr<bool> AutoSharding::Run(
         option_.device_mesh_shape.size(),
         /* symmetrical_mesh_dims */ !asymmetrical_mesh_dims);
   } else {
+    // NOTE: not manually partitioned and not trying multiple mesh shapes
+    // just the one device mesh shape in the options then
     mesh_shapes.push_back(option_.device_mesh_shape);
   }
 
@@ -4413,6 +4423,8 @@ absl::StatusOr<bool> AutoSharding::Run(
          "HLO, and AutoShardingption::try_multiple_mesh_shapes is set to "
          "false. Please re-run with the option set to true.";
 
+  // NOTE: if module has only one parameter that is a tuple with a sharding
+  // then repalce it with some unknown sharding things
   if (module->entry_computation()->num_parameters() > 0) {
     HloInstruction* parameter_instruction =
         module->entry_computation()->parameter_instruction(0);
@@ -4427,6 +4439,7 @@ absl::StatusOr<bool> AutoSharding::Run(
     }
   }
 
+  // NOTE: do similar process with output of module (i.e. root instruction)
   HloInstruction* root_instruction =
       module->entry_computation()->root_instruction();
   if (root_instruction->shape().IsTuple() && root_instruction->has_sharding()) {
@@ -4436,6 +4449,8 @@ absl::StatusOr<bool> AutoSharding::Run(
             module->config().allow_spmd_sharding_propagation_to_output()));
   }
 
+  // NOTE: create a module with the default shardings and store in
+  // sharding_propagation_solution
   absl::flat_hash_map<std::string, const HloInstruction*>
       sharding_propagation_solution;
   std::unique_ptr<HloModule> module_with_default_solution = nullptr;
@@ -4464,12 +4479,15 @@ absl::StatusOr<bool> AutoSharding::Run(
     }
   }
 
+  // allocate result for trying auto sharding on each possible mesh shape
   size_t num_meshes = mesh_shapes.size();
   std::vector<std::unique_ptr<HloModule>> modules(num_meshes);
   std::vector<absl::StatusOr<AutoShardingResult>> changed(
       num_meshes, AutoShardingResult::kModuleUnchanged);
   std::vector<double> objective_values(num_meshes, -1);
 
+  // NOTE: loop through all mesh shapes that are considered and
+  // try running the AutoShardingImplementation on it
   VLOG(1) << "Original mesh shape "
           << spmd::ToString(option_.device_mesh_shape);
   double min_objective_value = std::numeric_limits<double>::max();
@@ -4485,12 +4503,17 @@ absl::StatusOr<bool> AutoSharding::Run(
       this_option.device_mesh_beta.clear();
       TF_RETURN_IF_ERROR(this_option.CheckAndSetup());
     }
+
+    /*--------------------------------------------------*/
+    // NOTE: primary AutoSharding computation occurs here
+    /*--------------------------------------------------*/
     auto pass = new AutoShardingImplementation(this_option);
     auto module_clone = CloneModule(module);
     auto pass_result =
         pass->RunAutoSharding(module_clone.get(), replicated_small_tensors,
                               execution_threads, sharding_propagation_solution);
 
+    // NOTE: get whether it changed, objective value, and the module
     changed[i] = pass_result;
     objective_values[i] = pass->GetSolverOptimalObjectiveValue();
     modules[i] = std::move(module_clone);
@@ -4503,6 +4526,8 @@ absl::StatusOr<bool> AutoSharding::Run(
     }
     VLOG(1) << "Mesh shape " << spmd::ToString(mesh_shapes[i])
             << " has objective value " << objective_values[i];
+    
+    // NOTE: update the best found objective value
     if (objective_values[i] >= 0 && min_objective_value > objective_values[i]) {
       min_mesh_shape_index = i;
       min_objective_value = objective_values[i];
@@ -4516,8 +4541,11 @@ absl::StatusOr<bool> AutoSharding::Run(
 
   absl::StatusOr<bool> module_is_changed;
   if (skip_auto_sharding) {
+    // NOTE: found no mesh shape that lead to a changed module with sharding
+    // module is not changed from AutoSharding
     module_is_changed = false;  // The auto-sharding solver timed out.
   } else {
+    // NOTE: confirm that found something valid, otherwise error message
     std::string trying_to_find;
     if (option_.try_multiple_mesh_shapes) {
       trying_to_find = "a device mesh (and the corresponding shardings)";
@@ -4532,12 +4560,15 @@ absl::StatusOr<bool> AutoSharding::Run(
            "a higher budget). If you think you have set a reasonably large "
            "memory budget, please report this as a bug.";
 
+    // NOTE: if best mesh shape doesn't have an okay change, then get that one?
     if (!changed[min_mesh_shape_index].ok()) {
       module_is_changed = changed[min_mesh_shape_index].status();
     } else {
       solver_optimal_objective_value_ = min_objective_value;
       if (changed[min_mesh_shape_index].value() ==
           AutoShardingResult::kModuleChangedShardingPerformed) {
+        // NOTE: chose a best mesh shape, and found a module that has been
+        // changed with sharding performed (overall successful)
         VLOG(1) << "Choosing mesh shape "
                 << spmd::ToString(mesh_shapes[min_mesh_shape_index])
                 << " which had the minimal solver objective value of "
@@ -4545,6 +4576,10 @@ absl::StatusOr<bool> AutoSharding::Run(
         chosen_mesh_shape_ = mesh_shapes[min_mesh_shape_index];
         TF_RETURN_IF_ERROR(
             modules[min_mesh_shape_index]->RemoveUnusedComputations());
+
+        // NOTE: get sorted list of computation in original module and
+        // in the best resulting auto sharded module (expect to have same
+        // # of computations)
         const std::vector<HloComputation*>& original_module_computations =
             module->MakeComputationSorted();
         const std::vector<HloComputation*>& clone_module_computations =
@@ -4556,6 +4591,8 @@ absl::StatusOr<bool> AutoSharding::Run(
               "of computations. This is a bug and should be reported.");
         }
 
+        // NOTE: start transfer of computations from best auto-sharded module
+        // to the original module
         absl::flat_hash_map<HloComputation*, HloComputation*>
             computation_replacements;
         for (size_t i = 0; i < original_module_computations.size(); ++i) {
@@ -4565,6 +4602,7 @@ absl::StatusOr<bool> AutoSharding::Run(
           computation_replacements[original_computation] = new_computation;
         }
 
+        // NOTE: move the computations and update some configurations
         module->ReplaceComputations(computation_replacements);
         module->MoveComputationsFrom(modules[min_mesh_shape_index].get());
 
@@ -4585,6 +4623,7 @@ absl::StatusOr<bool> AutoSharding::Run(
     }
   }
 
+  // NOTE: done auto sharding, end timers, provide error messages, and return
   absl::Time end_time = absl::Now();
   auto duration = end_time - start_time;
   LOG(INFO) << "Auto Sharding took " << absl::ToInt64Seconds(duration)
