@@ -137,6 +137,7 @@ cc_library(
     hdrs = [
         "auto_sharding_solver.h",
         "auto_sharding_strategy.h",
+        "fix_log.h"
     ],
     compatible_with = get_compatible_with_libtpu_portable(),
     deps = [

@@ -57,6 +57,8 @@ limitations under the License.
 #include "xla/xla_data.pb.h"
 #include "tsl/platform/errors.h"
 
+#include "fix_log.h"
+
 namespace xla {
 namespace spmd {
 
@@ -890,6 +892,8 @@ BuildStrategyAndCost(
       default:
         LOG(FATAL) << "Unhandled instruction: " + ins->ToString();
     }
+    VLOG(5) << "Alpa num strats for: " << ins->name() << " " << strategy_group->strategies.size();
+
     RemoveDuplicatedStrategy(strategy_group);
     if (ins->has_sharding() && ins->opcode() != HloOpcode::kOutfeed) {
       // Finds the sharding strategy that aligns with the given sharding spec
