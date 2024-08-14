@@ -90,6 +90,8 @@ limitations under the License.
 #include "tsl/platform/status.h"
 #include "tsl/platform/statusor.h"
 
+#include "fix_log.h"
+
 namespace xla {
 namespace spmd {
 
@@ -4653,6 +4655,8 @@ absl::StatusOr<bool> AutoSharding::Run(
   absl::Time end_time = absl::Now();
   auto duration = end_time - start_time;
   LOG(INFO) << "Auto Sharding took " << absl::ToInt64Seconds(duration)
+            << " seconds";
+  VLOG(5) << "Auto Sharding took " << absl::ToInt64Seconds(duration)
             << " seconds";
 #if !defined(__APPLE__)
   metrics::RecordAutoShardingCompilationTime(

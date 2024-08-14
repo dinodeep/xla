@@ -78,6 +78,7 @@ limitations under the License.
 #include "xla/hlo/ir/hlo_module_group.h"
 #include "xla/hlo/ir/hlo_opcode.h"
 #include "xla/hlo/ir/hlo_schedule.h"
+#include "xla/hlo/experimental/auto_sharding/auto_sharding.h"
 #include "xla/literal.h"
 #include "xla/map_util.h"
 #include "xla/mlir_hlo/transforms/passes.h"
@@ -437,6 +438,22 @@ void RunDummyPipeline(HloModule* module) {
   TF_CHECK_OK(pipeline.Run(module).status());
 }
 
+void RunAlpaPipeline(HloModule* module) {
+
+  HloPassPipeline pipeline("alpa-pipeline");
+
+  AutoShardingOption option;
+  option.enable = true;
+  option.preserve_shardings = AutoShardingOption::PreserveShardingsType::kRemoveAllShardings;
+  option.device_mesh_shape = { 4, 2 };
+  option.solve_nd_sharding_iteratively = false;
+
+  pipeline.AddPass<AutoSharding>(option);
+  TF_CHECK_OK(pipeline.Run(module).status());
+
+  return;
+}
+
 absl::Status CpuCompiler::RunHloPassesThroughLayoutAssn(
     HloModule* module, bool is_aot_compile,
     LLVMTargetMachineFeatures* target_machine_features, bool is_mlir_compile) {
@@ -448,7 +465,8 @@ absl::Status CpuCompiler::RunHloPassesThroughLayoutAssn(
   VLOG(2) << "replica_count=" << module->config().replica_count();
   VLOG(2) << "use_spmd_partitioning=" << module->config().use_spmd_partitioning();
 
-  RunDummyPipeline(module);
+  RunAlpaPipeline(module);
+  // RunDummyPipeline(module);
 
   if (num_partitions > 1) {
     if (!module->config().use_spmd_partitioning()) {
