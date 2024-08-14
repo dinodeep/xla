@@ -3866,6 +3866,14 @@ std::pair<int64_t, int64_t> ReduceMemoryTerms(
   return num_terms;
 }
 
+/****************************************/
+/* AutoShardingImplementation::Run      */
+/****************************************/
+
+// NOTE: core implementation of the auto sharding algorithm
+// need to determine what is the need for sharding_propagation_solution
+// (which is effectively just the original module with sharding propagation run
+// on it)
 absl::StatusOr<AutoShardingResult> AutoShardingImplementation::RunAutoSharding(
     HloModule* module,
     const absl::flat_hash_set<std::string>& replicated_small_tensors,
@@ -3879,6 +3887,7 @@ absl::StatusOr<AutoShardingResult> AutoShardingImplementation::RunAutoSharding(
 
   bool set_to_memory_lower_bound = (option_.memory_budget_per_device == 0);
 
+  // NOTE: as noted by comments below, primarily removing a custom call
   // Remove CustomCalls with custom_call_target="Sharding" and move their
   // shardings to their input ops.
   absl::flat_hash_map<const HloInstruction*, std::vector<int64_t>>
@@ -3968,6 +3977,9 @@ absl::StatusOr<AutoShardingResult> AutoShardingImplementation::RunAutoSharding(
   original_device_mesh.SetValues(option_.device_mesh_ids);
   const int64_t original_memory_budget = option_.memory_budget_per_device;
 
+  // NOTE: create mesh shapes by including each dimension iteratively
+  // this is slightly confusing because originally mesh was required to be 2D
+  // in AutoSharding::Run?
   std::vector<std::vector<int64_t>> partial_mesh_shapes;
   if (option_.solve_nd_sharding_iteratively) {
     // Generate partial mesh shapes to optimize iteratively.
@@ -3976,8 +3988,10 @@ absl::StatusOr<AutoShardingResult> AutoShardingImplementation::RunAutoSharding(
     partial_mesh_shapes = {option_.device_mesh_shape};
   }
 
+  // NOTE: build call graph to symbolize computations calling other computations
   std::unique_ptr<CallGraph> call_graph = CallGraph::Build(module);
 
+  // NOTE: HloCostAnalysis seems to be primary way to evaluate modules
   HloCostAnalysis::Options hlo_cost_analysis_options{
       .shape_size = [](const Shape& shape) { return spmd::GetBytes(shape); }};
   HloCostAnalysis hlo_cost_analysis(hlo_cost_analysis_options);
@@ -4006,6 +4020,8 @@ absl::StatusOr<AutoShardingResult> AutoShardingImplementation::RunAutoSharding(
         return changed.status();
       }
     }
+    // NOTE: doesn't this have a significant impact on the 
+    // costs associated with the communication heirarchy?
     if (option_.device_mesh_ids.size() == total_devices) {
       // It is unclear what device order to use for partial meshes. So we only
       // use the actual device order only for the final full mesh.
@@ -4055,6 +4071,8 @@ absl::StatusOr<AutoShardingResult> AutoShardingImplementation::RunAutoSharding(
     }
 
     if (!option_.force_simple_heuristic.empty()) {
+      // NOTE: perform sharding annotations with some simple heuristic
+      // what is this heuristic?
       AnnotateShardingWithSimpleHeuristic(
           module, option_.force_simple_heuristic, alias_map, cluster_env);
       return AutoShardingResult::kModuleChangedShardingPerformed;
@@ -4331,6 +4349,10 @@ std::unique_ptr<HloModule> CloneModule(const HloModule* module) {
       module->layout_canonicalization_callback());
   return module_clone;
 }
+
+/****************************************/
+/* AutoSharding::Run                    */
+/****************************************/
 
 AutoSharding::AutoSharding(const AutoShardingOption& option)
     : option_(option) {}
@@ -4646,10 +4668,6 @@ absl::StatusOr<bool> AutoSharding::Run(
 
   return module_is_changed;
 }
-
-/****************************************/
-/* AutoSharding::Run                    */
-/****************************************/
 
 absl::StatusOr<bool> DummyAutoSharding::Run(
     HloModule* module,

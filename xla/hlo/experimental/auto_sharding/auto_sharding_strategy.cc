@@ -119,6 +119,7 @@ BuildStrategyAndCost(
             << ToAdaptiveString(ins);
     std::unique_ptr<StrategyGroup> strategy_group;
 
+    // NOTE: not an instruction to shard, meaning that it is manually sharded
     if (!instructions_to_shard.contains(ins)) {
       VLOG(2) << "  Manually sharded;";
       strategy_group = HandleManuallyShardedInstruction(
@@ -146,6 +147,8 @@ BuildStrategyAndCost(
       only_allow_divisible = option.only_allow_divisible_intermediate;
     }
 
+    // NOTE: this is where StrategyGroups are created based on the type of
+    // instruction
     bool is_follow_necessary_for_correctness = false;
     switch (opcode) {
       case HloOpcode::kParameter: {
@@ -896,6 +899,7 @@ BuildStrategyAndCost(
           ins->sharding(), cluster_env, pretrimmed_strategy_map, call_graph,
           option.nd_sharding_iteratively_strict_search_space);
     }
+    // NOTE: understand why the solver would run much longer???
     if (!strategy_group->is_tuple && strategy_group->following) {
       if (!LeafVectorsAreConsistent(strategy_group->strategies,
                                     strategy_group->following->strategies)) {
