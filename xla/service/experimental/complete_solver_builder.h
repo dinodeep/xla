@@ -12,21 +12,28 @@
 using ::operations_research::MPSolver;
 using ::operations_research::MPObjective;
 using ::operations_research::MPVariable;
+using ::operations_research::LinearExpr;
 
 namespace xla {
+
+// TODO: make this the implementation of ShardingStrategySelector
+// no need for the SimpleSolverBuilder
 
 // This solver builder will ignore the resharding costs between 
 // instructions and will only perform the naive optimization of choosing a 
 // sharding strategy based off of their costs
 class CompleteSolverBuilder : SolverBuilder {
 public:
-  CompleteSolverBuilder();
+  CompleteSolverBuilder(double replicated_flops_prop);
 
   // setup variables within the solver
   void CreateVars(std::shared_ptr<InstructionStrategies> strats) override final;
 
   // setup variable constraints
   void AddConstraints(std::shared_ptr<InstructionStrategies> strats) override final;
+
+  void AddComputationConstraint(
+    std::vector<std::shared_ptr<InstructionStrategies>> all_strats);
 
   // setup the objective
   void AddInObjective(std::shared_ptr<InstructionStrategies> strats) override final;
@@ -38,6 +45,9 @@ public:
   int GetStratIdx(std::shared_ptr<InstructionStrategies> strats) override final;
 
 private:
+
+  // Maximum proportion of FLOPs that are allowed to be fully replicated
+  double replicated_flops_prop_;
 
   // returns a vector of the resharding matrices of the operand's to the current
   // instruction, if an operand doesn't have any shardings, then it doesn't

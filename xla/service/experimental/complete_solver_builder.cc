@@ -2,6 +2,8 @@
 
 #include "xla/service/experimental/complete_solver_builder.h"
 
+#include "xla/service/experimental/device_mesh.h"
+
 #include "tsl/platform/logging.h"
 #include "tsl/platform/errors.h"
 
@@ -9,9 +11,14 @@
 
 namespace xla {
 
-CompleteSolverBuilder::CompleteSolverBuilder() :
+CompleteSolverBuilder::CompleteSolverBuilder(double replicated_flops_prop) :
+    replicated_flops_prop_(replicated_flops_prop), 
     solver_(MPSolver::CreateSolver("SCIP")),
     objective_(solver_->MutableObjective()) {
+
+  // NOTE: should check that replicated_flops_prop_ is in a valid range
+  double min_prop = ((double) 1) / ((double) (DeviceMesh::DeviceCount()));
+  assert(min_prop <= replicated_flops_prop_ && replicated_flops_prop_ <= 1);
 
   objective_->SetMinimization();
   return;
@@ -56,6 +63,8 @@ void CompleteSolverBuilder::AddConstraints(std::shared_ptr<InstructionStrategies
     return;
   }
 
+  // access variables representing boolean choice of sharding strategy
+  // TODO: rename this to num_strats
   int num_shardings = strats->num_sharding_strats();
   std::vector<MPVariable*>& comp_vars = var_map_[strats].comp_vars;
   std::vector<std::shared_ptr<VariableMatrix>>& user_matrices 
@@ -100,9 +109,49 @@ void CompleteSolverBuilder::AddConstraints(std::shared_ptr<InstructionStrategies
         solver_->MakeRowConstraint(mat->SumCol(c) == comp_vars[c]);
       }
     }
-  } 
+  }
 
   return;
+}
+
+void CompleteSolverBuilder::AddComputationConstraint(
+      std::vector<std::shared_ptr<InstructionStrategies>> all_strats) {
+  
+  // constrain computation FLOPs to some proportion of a fully replicated
+  // computation to guarantee parallelism to some degree
+  LinearExpr total_device_flops;
+  LinearExpr fully_replicated_flops;
+
+  // iterate through all instructions that will be sharded
+  for (std::shared_ptr<InstructionStrategies> strats : all_strats) {
+    
+    // unpack boolean variables representing choice of sharding strategies
+    int num_shardings = strats->num_sharding_strats();
+    std::vector<MPVariable*>& comp_vars = var_map_[strats].comp_vars;
+    std::vector<ShardingStrategy>& sharding_strats 
+      = strats->sharding_strats();
+
+    // incorporate computation of each sharding strategy of instruction
+    // into constraint
+    for (int i = 0; i < num_shardings; i++) {
+      LinearExpr term(comp_vars[i]);
+      term *= sharding_strats[i].flops();
+      total_device_flops += term;
+    }
+
+    // incorporate fully replicated flops in upper bound
+    fully_replicated_flops += strats->fully_replicated_flops();
+  }
+
+  // upper bound by a proportion of the number of flops in a fully replicated
+  // solution
+  fully_replicated_flops *= replicated_flops_prop_;
+
+  // include constraint into solver
+  solver_->MakeRowConstraint(total_device_flops <= fully_replicated_flops);
+
+  return;
+
 }
 
 // setup the objective
