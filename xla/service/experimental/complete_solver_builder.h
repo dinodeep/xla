@@ -24,7 +24,7 @@ namespace xla {
 // sharding strategy based off of their costs
 class CompleteSolverBuilder : SolverBuilder {
 public:
-  CompleteSolverBuilder();
+  CompleteSolverBuilder(double replicated_flops_prop);
 
   // setup variables within the solver
   void CreateVars(std::shared_ptr<InstructionStrategies> strats) override final;
@@ -45,6 +45,9 @@ public:
   int GetStratIdx(std::shared_ptr<InstructionStrategies> strats) override final;
 
 private:
+
+  // Maximum proportion of FLOPs that are allowed to be fully replicated
+  double replicated_flops_prop_;
 
   // returns a vector of the resharding matrices of the operand's to the current
   // instruction, if an operand doesn't have any shardings, then it doesn't

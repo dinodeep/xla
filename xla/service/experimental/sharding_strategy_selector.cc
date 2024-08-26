@@ -6,6 +6,8 @@
 #include "tsl/platform/errors.h"
 #include "xla/service/experimental/fix_log.h"
 
+#define REPLICATED_FLOPS_PROP 0.2
+
 namespace xla {
 
 // Sets the shardings of the HloInstructions based on the best sharding strategy
@@ -15,7 +17,7 @@ bool ShardingStrategySelector::Select(std::unordered_map<HloInstruction*,
     std::shared_ptr<InstructionStrategies>> strat_map) {
 
   // initialize a builder
-  CompleteSolverBuilder builder;
+  CompleteSolverBuilder builder(REPLICATED_FLOPS_PROP);
 
   // create variables, construct their constraints, and add to the objective
   for (auto& [instr, strats] : strat_map) {

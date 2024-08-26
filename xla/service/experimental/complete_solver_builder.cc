@@ -2,6 +2,8 @@
 
 #include "xla/service/experimental/complete_solver_builder.h"
 
+#include "xla/service/experimental/device_mesh.h"
+
 #include "tsl/platform/logging.h"
 #include "tsl/platform/errors.h"
 
@@ -9,9 +11,14 @@
 
 namespace xla {
 
-CompleteSolverBuilder::CompleteSolverBuilder() :
+CompleteSolverBuilder::CompleteSolverBuilder(double replicated_flops_prop) :
+    replicated_flops_prop_(replicated_flops_prop), 
     solver_(MPSolver::CreateSolver("SCIP")),
     objective_(solver_->MutableObjective()) {
+
+  // NOTE: should check that replicated_flops_prop_ is in a valid range
+  double min_prop = ((double) 1) / ((double) (DeviceMesh::DeviceCount()));
+  assert(min_prop <= replicated_flops_prop_ && replicated_flops_prop_ <= 1);
 
   objective_->SetMinimization();
   return;
@@ -114,7 +121,6 @@ void CompleteSolverBuilder::AddComputationConstraint(
   // computation to guarantee parallelism to some degree
   LinearExpr total_device_flops;
   LinearExpr fully_replicated_flops;
-  double prop = 1.0/8.0;
 
   // iterate through all instructions that will be sharded
   for (std::shared_ptr<InstructionStrategies> strats : all_strats) {
@@ -139,7 +145,7 @@ void CompleteSolverBuilder::AddComputationConstraint(
 
   // upper bound by a proportion of the number of flops in a fully replicated
   // solution
-  fully_replicated_flops *= prop;
+  fully_replicated_flops *= replicated_flops_prop_;
 
   // include constraint into solver
   solver_->MakeRowConstraint(total_device_flops <= fully_replicated_flops);
