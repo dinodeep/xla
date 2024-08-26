@@ -12,8 +12,12 @@
 using ::operations_research::MPSolver;
 using ::operations_research::MPObjective;
 using ::operations_research::MPVariable;
+using ::operations_research::LinearExpr;
 
 namespace xla {
+
+// TODO: make this the implementation of ShardingStrategySelector
+// no need for the SimpleSolverBuilder
 
 // This solver builder will ignore the resharding costs between 
 // instructions and will only perform the naive optimization of choosing a 
@@ -27,6 +31,9 @@ public:
 
   // setup variable constraints
   void AddConstraints(std::shared_ptr<InstructionStrategies> strats) override final;
+
+  void AddComputationConstraint(
+    std::vector<std::shared_ptr<InstructionStrategies>> all_strats);
 
   // setup the objective
   void AddInObjective(std::shared_ptr<InstructionStrategies> strats) override final;
