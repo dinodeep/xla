@@ -55,6 +55,8 @@ public:
 
   HloInstruction* orig_instr() { return orig_instr_; }
 
+  uint64_t fully_replicated_flops() { return fully_replicated_flops_; }
+
   // takes the index of sharding_strats_ and sets the sharding
   // of the instruction
   void set_chosen_strat(int idx);
