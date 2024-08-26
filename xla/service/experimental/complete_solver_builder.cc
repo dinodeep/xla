@@ -114,7 +114,7 @@ void CompleteSolverBuilder::AddComputationConstraint(
   // computation to guarantee parallelism to some degree
   LinearExpr total_device_flops;
   LinearExpr fully_replicated_flops;
-  double prop = 0.5;
+  double prop = 1.0/8.0;
 
   // iterate through all instructions that will be sharded
   for (std::shared_ptr<InstructionStrategies> strats : all_strats) {

@@ -10,6 +10,7 @@ namespace xla {
 
 // Sets the shardings of the HloInstructions based on the best sharding strategy
 // selected from the solver
+// NOTE: make map an input by reference
 bool ShardingStrategySelector::Select(std::unordered_map<HloInstruction*, 
     std::shared_ptr<InstructionStrategies>> strat_map) {
 
@@ -24,6 +25,12 @@ bool ShardingStrategySelector::Select(std::unordered_map<HloInstruction*,
   for (auto& [instr, strats] : strat_map) {
     builder.AddConstraints(strats);
   }
+
+  std::vector<std::shared_ptr<InstructionStrategies>> all_strats;
+  for (auto& [instr, strats] : strat_map) {
+    all_strats.push_back(strats);
+  }
+  builder.AddComputationConstraint(all_strats);
 
   for (auto& [instr, strats] : strat_map) {
     builder.AddInObjective(strats);
