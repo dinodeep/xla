@@ -18,6 +18,7 @@ namespace xla {
 InstructionStrategies::InstructionStrategies(HloInstruction* orig_instr) 
   : orig_instr_(orig_instr) {
 
+
   // create a single instruction module which will then be used for evaluating
   // all of the sharding strats
   std::unique_ptr<HloModule> single_instr_module = 
@@ -38,12 +39,14 @@ InstructionStrategies::InstructionStrategies(HloInstruction* orig_instr)
     EvaluateShardingStrat(single_instr_module.get(), &sharding_strats_[i]);
   }
 
+  // TODO: add assert that there is no sharding on the original instruction 
   // estimate the number of FLOPs for an unsharded module
   ModuleCostEvaluator evaluator;
-  uint64_t unsharded_flops = evaluator.EvaluateFLOPs(single_instr_module.get());
+  fully_replicated_flops_ = evaluator.EvaluateFLOPs(single_instr_module.get());
 
   // TODO: iterate through sharding strats and ignore those that are fully
-  // sharded but do not have an inversely proportionate number of FLOPs
+  // sharded but do not have an inversely proportionate number of FLOPs and
+  // decide if this is worth doing
 
   return;
 }
