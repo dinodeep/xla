@@ -78,6 +78,10 @@ private:
   // vector of sharding strategies for the given instruction
   std::vector<ShardingStrategy> sharding_strats_;
 
+  // Number of flops of computation this instruction requires when
+  // fully replicated on a device
+  uint64_t fully_replicated_flops_;
+
 };
 
 } // xla
