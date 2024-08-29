@@ -44,6 +44,7 @@ void ShardingStrategy::ApplyToInstruction(HloInstruction* instr) {
   return;
 }
 
+// Assumes that provided module is a single-instruction module
 void ShardingStrategy::ApplyToModule(HloModule* module) {
   ClearHloShardings(module);
   ApplyToInstruction(module->entry_computation()->root_instruction()); 
