@@ -7,7 +7,10 @@
 #include "xla/service/experimental/fix_log.h"
 
 #define REPLICATED_FLOPS_PROP 0.2
-#define MEMORY_LIMIT_BYTES (16 * 1024 * 1024 * 1024)
+
+#define KB ((uint64_t) 1024)
+#define GB (KILO * KILO * KILO)
+#define MEMORY_LIMIT_BYTES (((uint64_t) 16) * KB * KB * KB)
 
 namespace xla {
 
@@ -23,7 +26,7 @@ bool ShardingStrategySelector::Select(std::unordered_map<HloInstruction*,
     MEMORY_LIMIT_BYTES
   );
 
-  // create variables, construct their constraints, and add to the objective
+  // create variables and add constraints to produce valid selection of strats
   for (auto& [instr, strats] : strat_map) {
     builder.CreateVars(strats);
   }
@@ -36,7 +39,11 @@ bool ShardingStrategySelector::Select(std::unordered_map<HloInstruction*,
   for (auto& [instr, strats] : strat_map) {
     all_strats.push_back(strats);
   }
+
+  // add in computation and memory constraints
   builder.AddComputationConstraint(all_strats);
+  builder.AddMemoryConstraint(all_strats);
+
 
   for (auto& [instr, strats] : strat_map) {
     builder.AddInObjective(strats);

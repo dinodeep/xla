@@ -175,7 +175,7 @@ void CompleteSolverBuilder::AddMemoryConstraint(
   }
 
   // add constraint that memory usage is <= memory limit
-  solver_->MakeRowConstraint(total_memory_usage <= replicated_flops_prop_);
+  solver_->MakeRowConstraint(total_memory_usage <= memory_limit_);
 
   return;
 
