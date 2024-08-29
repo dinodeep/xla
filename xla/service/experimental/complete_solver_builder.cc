@@ -11,8 +11,10 @@
 
 namespace xla {
 
-CompleteSolverBuilder::CompleteSolverBuilder(double replicated_flops_prop) :
-    replicated_flops_prop_(replicated_flops_prop), 
+CompleteSolverBuilder::CompleteSolverBuilder(double replicated_flops_prop,
+    uint64_t memory_limit) :
+    replicated_flops_prop_(replicated_flops_prop),
+    memory_limit_(memory_limit),
     solver_(MPSolver::CreateSolver("SCIP")),
     objective_(solver_->MutableObjective()) {
 
