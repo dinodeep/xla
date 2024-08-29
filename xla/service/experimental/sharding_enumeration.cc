@@ -4,11 +4,15 @@
 
 #include "xla/service/experimental/device_mesh.h"
 #include "xla/hlo/ir/hlo_sharding.h"
+#include "xla/hlo/ir/hlo_opcode.h"
+#include "xla/hlo/ir/hlo_instructions.h"
 #include "xla/hlo/ir/tile_assignment.h"
 
 // #define DEBUG_SINGLE_DIMENSION_SHARDING_
 
 namespace xla {
+
+namespace {
 
 // enumerate sharding from the number of dimensions in the data
 // TODO: could be cached
@@ -182,12 +186,38 @@ std::vector<ShardingStrategy> CartesianProductShardingVectors(
   return strats;
 }
 
+// Enumerate through sharding strategies of a parameter instruction
+// by enumerating through all possible output shardings of the parameter
+// Note: unlike EnumerateGeneralShardingStrategies, this function will
+// define the result_sharding_ attribute which should not be overriden
+std::vector<ShardingStrategy> EnumerateParameterShardingStrategies(
+    HloParameterInstruction* instruction) {
+
+  // enumerate the K parameter shardings as if it were any operand
+  // handles case where parameter already has sharding
+  std::vector<HloSharding> result_shardings = EnumerateGeneralOpSharding(
+    instruction, instruction
+  );
+
+  // for each possible output sharding shape, create a strategy that produces
+  // that shape
+  std::vector<ShardingStrategy> strategies;
+  for (HloSharding& sharding : result_shardings) {
+    ShardingStrategy strat;
+    strat.set_result_sharding(sharding);
+
+    strategies.push_back(strat);
+  }
+
+  return strategies;
+}
+
 // Enumerates all possible sharding strategies on the inputs of the current
 // instruction
 // TODO: need to make instruction sharding use shared pointers
 // going to be many identical copies of the same sharding in memory
 // for larger problems
-std::vector<ShardingStrategy> EnumerateShardingStrategies(
+std::vector<ShardingStrategy> EnumerateGeneralShardingStrategies(
     HloInstruction* instruction) {
 
   // enumerate through the shardings for each operator of the instruction
@@ -201,6 +231,27 @@ std::vector<ShardingStrategy> EnumerateShardingStrategies(
   }
 
   return CartesianProductShardingVectors(all_op_shardings);
+}
+
+} // namespace
+
+// Enumerates all possible sharding strategies on the inputs of the current
+// instruction
+// TODO: need to make instruction sharding use shared pointers
+// going to be many identical copies of the same sharding in memory
+// for larger problems
+std::vector<ShardingStrategy> EnumerateShardingStrategies(
+    HloInstruction* instruction) {
+
+  switch (instruction->opcode()) {
+  case HloOpcode::kParameter:
+    return EnumerateParameterShardingStrategies(
+      static_cast<HloParameterInstruction*>(instruction)
+    );
+  default:
+    return EnumerateGeneralShardingStrategies(instruction);
+  }
+
 } 
 
-}
+} // namespace xla

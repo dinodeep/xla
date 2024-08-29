@@ -2,6 +2,8 @@
 
 #include "xla/service/experimental/sharding_strategy.h"
 
+#include "xla/hlo/ir/hlo_opcode.h"
+
 namespace xla {
 
 namespace {
@@ -36,6 +38,13 @@ void ShardingStrategy::set_result_sharding(HloSharding result_sharding) {
 void ShardingStrategy::ApplyToInstruction(HloInstruction* instr) {
   int num_operands = instr->operand_count();
 
+  // if parameter instruction, then apply result sharding to instruction itself
+  if (instr->opcode() == HloOpcode::kParameter) {
+    instr->set_sharding(result_sharding());
+    return;
+  }
+
+  // otherwise, general instruction, apply to it's operands
   assert(num_operands == NumOpShardings());
   for (int i = 0; i < num_operands; i++) {
     instr->mutable_operand(i)->set_sharding(GetOpSharding(i));
@@ -44,6 +53,7 @@ void ShardingStrategy::ApplyToInstruction(HloInstruction* instr) {
   return;
 }
 
+// Assumes that provided module is a single-instruction module
 void ShardingStrategy::ApplyToModule(HloModule* module) {
   ClearHloShardings(module);
   ApplyToInstruction(module->entry_computation()->root_instruction()); 
