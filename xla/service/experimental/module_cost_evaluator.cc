@@ -161,28 +161,13 @@ uint64_t ModuleCostEvaluator::EvaluateFLOPs(const HloModule* module) {
 
 // This function simply returns the number of bytes occupied by parameters
 // on a single machine. If a parameter is sharded, then only the shard's size
-// is added to the total bytes used in memory
+// is added to the total bytes used in memory.
+// Note that this should return 0 for intermediate instructions and
+// should return a non-zero value for parameter instructions of the original
+// module
 uint64_t ModuleCostEvaluator::EvaluateMemoryBytes(const HloModule* module) {
 
   uint64_t memory_bytes = 0;
-
-  // iterate through params of root computation and add their contributed bytes
-  HloComputation* root_comp = module->entry_computation();
-  int num_params = root_comp->num_parameters();
-
-  for (int i = 0; i < num_params; i++) {
-    HloInstruction* param = root_comp->parameter_instruction(i);
-    Shape s = param->shape();
-    HloSharding sharding = param->sharding();
-
-    assert(param->opcode() == HloOpcode::kParameter);
-    VLOG(5) << "\tparameter size on device" << param->name();
-
-    // TODO: refactor NumBytesFromShape everywhere to use ShapeUtil 
-    memory_bytes += NumBytesFromShape(s) / sharding.NumTiles();
-  }
-
-  VLOG(5) << "Number of memory bytes: " << memory_bytes;
 
   return memory_bytes;
 }
