@@ -15,13 +15,18 @@ public:
   ShardingStrategy(const ShardingStrategy& s) = default;
   ShardingStrategy(ShardingStrategy&& s) = default;
 
-  // cost getters and setters
+  // getters and setters
   uint64_t cost() const { return cost_; }
   void set_cost(uint64_t cost) { cost_ = cost; }
 
-  // flops getters and setters
   uint64_t flops() const { return flops_; }
   void set_flops(uint64_t flops) { flops_ = flops; }
+
+  uint64_t memory_bytes() const { return memory_bytes_; }
+  void set_memory_bytes(uint64_t memory_bytes) { 
+    memory_bytes_ = memory_bytes;
+    return;
+  }
 
   // modifying the operand_shardings
   // TODO: accept a shared pointer
@@ -65,6 +70,12 @@ private:
   // This will be assigned after eavluating the cost of the complete HloModule
   // after performing sharding propagation and SPMD partitioning
   uint64_t flops_;
+
+  // Number of bytes the resulting shape of this instruction will consume
+  // on the device. Currently, using simplified represention of the amount of
+  // memory consumed which is simply the size of the shards of HloParameters
+  // operations of the entire module
+  uint64_t memory_bytes_;
 
   // Whether this sharding strategy has a fully sharded operand within
   // it's list of operand shardings
