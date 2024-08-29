@@ -167,9 +167,23 @@ uint64_t ModuleCostEvaluator::EvaluateFLOPs(const HloModule* module) {
 // module
 uint64_t ModuleCostEvaluator::EvaluateMemoryBytes(const HloModule* module) {
 
-  uint64_t memory_bytes = 0;
+  // get (root) instruction of single instruction module
+  HloInstruction* instr = module->entry_computation()->root_instruction();
 
-  return memory_bytes;
+  // only get memory occupied by sharding of parameters to original module
+  // (intermediate values are irrelevant in this memory model)
+  if (instr->opcode() == HloOpcode::kParameter) {
+    uint64_t memory_bytes = NumBytesFromShape(instr->shape());
+
+    if (instr->has_sharding()) {
+      memory_bytes /= instr->sharding().NumTiles();
+    }
+
+    return memory_bytes;
+  } else {
+    return 0;
+  }
+
 }
 
 }  // namespace xla
