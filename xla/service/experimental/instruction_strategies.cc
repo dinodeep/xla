@@ -18,7 +18,6 @@ namespace xla {
 InstructionStrategies::InstructionStrategies(HloInstruction* orig_instr) 
   : orig_instr_(orig_instr) {
 
-
   // create a single instruction module which will then be used for evaluating
   // all of the sharding strats
   std::unique_ptr<HloModule> single_instr_module = 
