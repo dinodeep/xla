@@ -117,7 +117,7 @@ void CompleteSolverBuilder::AddConstraints(std::shared_ptr<InstructionStrategies
 }
 
 void CompleteSolverBuilder::AddComputationConstraint(
-      std::vector<std::shared_ptr<InstructionStrategies>> all_strats) {
+    std::vector<std::shared_ptr<InstructionStrategies>> all_strats) {
   
   // constrain computation FLOPs to some proportion of a fully replicated
   // computation to guarantee parallelism to some degree
@@ -130,8 +130,7 @@ void CompleteSolverBuilder::AddComputationConstraint(
     // unpack boolean variables representing choice of sharding strategies
     int num_shardings = strats->num_sharding_strats();
     std::vector<MPVariable*>& comp_vars = var_map_[strats].comp_vars;
-    std::vector<ShardingStrategy>& sharding_strats 
-      = strats->sharding_strats();
+    std::vector<ShardingStrategy>& sharding_strats = strats->sharding_strats();
 
     // incorporate computation of each sharding strategy of instruction
     // into constraint
@@ -151,6 +150,32 @@ void CompleteSolverBuilder::AddComputationConstraint(
 
   // include constraint into solver
   solver_->MakeRowConstraint(total_device_flops <= fully_replicated_flops);
+
+  return;
+
+}
+
+void CompleteSolverBuilder::AddMemoryConstraint(
+    std::vector<std::shared_ptr<InstructionStrategies>> all_strats) {
+
+  // iterate through all strategies and add up their memory contributes
+  LinearExpr total_memory_usage;
+
+  for (std::shared_ptr<InstructionStrategies> strats : all_strats) {
+    // unpack boolean variables representing choice of sharding strategies
+    int num_shardings = strats->num_sharding_strats();
+    std::vector<MPVariable*>& comp_vars = var_map_[strats].comp_vars;
+    std::vector<ShardingStrategy>& sharding_strats = strats->sharding_strats();
+
+    for (int i = 0; i < num_shardings; i++) {
+      LinearExpr term(comp_vars[i]);
+      term *= sharding_strats[i].memory_bytes();
+      total_memory_usage += term;
+    }
+  }
+
+  // add constraint that memory usage is <= memory limit
+  solver_->MakeRowConstraint(total_memory_usage <= replicated_flops_prop_);
 
   return;
 

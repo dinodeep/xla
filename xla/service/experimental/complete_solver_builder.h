@@ -32,8 +32,13 @@ public:
   // setup variable constraints
   void AddConstraints(std::shared_ptr<InstructionStrategies> strats) override final;
 
+  // setup constraint to limit proportion of replicated computation in solution
   void AddComputationConstraint(
     std::vector<std::shared_ptr<InstructionStrategies>> all_strats);
+
+  // setup constraint to limit total memory usage of solution
+  void AddMemoryConstraint(
+    std::vector<std::shared_ptr<InstructionStrategies>> all_stats);
 
   // setup the objective
   void AddInObjective(std::shared_ptr<InstructionStrategies> strats) override final;
