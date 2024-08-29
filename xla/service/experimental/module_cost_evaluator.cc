@@ -159,4 +159,31 @@ uint64_t ModuleCostEvaluator::EvaluateFLOPs(const HloModule* module) {
   return flops;
 }
 
+// This function simply returns the number of bytes occupied by parameters
+// on a single machine. If a parameter is sharded, then only the shard's size
+// is added to the total bytes used in memory.
+// Note that this should return 0 for intermediate instructions and
+// should return a non-zero value for parameter instructions of the original
+// module
+uint64_t ModuleCostEvaluator::EvaluateMemoryBytes(const HloModule* module) {
+
+  // get (root) instruction of single instruction module
+  HloInstruction* instr = module->entry_computation()->root_instruction();
+
+  // only get memory occupied by sharding of parameters to original module
+  // (intermediate values are irrelevant in this memory model)
+  if (instr->opcode() == HloOpcode::kParameter) {
+    uint64_t memory_bytes = NumBytesFromShape(instr->shape());
+
+    if (instr->has_sharding()) {
+      memory_bytes /= instr->sharding().NumTiles();
+    }
+
+    return memory_bytes;
+  } else {
+    return 0;
+  }
+
+}
+
 }  // namespace xla

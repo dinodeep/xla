@@ -19,6 +19,7 @@ public:
 
   uint64_t EvaluateCommCost(const HloModule* module);
   uint64_t EvaluateFLOPs(const HloModule* module);
+  uint64_t EvaluateMemoryBytes(const HloModule* module);
 };
 
 } // xla
