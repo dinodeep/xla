@@ -34,6 +34,8 @@ InstructionStrategies::InstructionStrategies(HloInstruction* orig_instr)
   }
 
   // estimate costs of each sharding strategy
+  // TODO: is it weird the way we are creating a pointer to the
+  // i'th sharding strategy?
   for (int i = 0; i < sharding_strats_.size(); i++) {
     EvaluateShardingStrat(single_instr_module.get(), &sharding_strats_[i]);
   }
