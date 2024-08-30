@@ -4,6 +4,7 @@
 
 #include "xla/service/experimental/complete_strategy_graph.h"
 #include "xla/service/experimental/sharding_strategy_selector.h"
+#include "xla/debug_options_flags.h"
 
 #include "xla/service/experimental/debug.h"
 
@@ -37,13 +38,19 @@ absl::StatusOr<bool> AutoParallelizer::Run(
     HloModule* module,
     const absl::flat_hash_set<absl::string_view>& execution_threads) {
 
-  VLOG(5) << "Starting AutoParallelizer Run";
+  if (!GetDebugOptionsFromFlags().xla_auto_parallel_enable()) {
+    VLOG(5) << "AutoParallellizer disabled. Enable via flag ."
+    return false;
+  }
+
 
   if (!ShardableModule(module)) {
     VLOG(5) << LOG_HEADER(0) << "module = " 
       << module->name() << " not shardable";
     return false;
   }
+
+  VLOG(5) << "Starting AutoParallelizer Run";
 
   // create a clone of the module, then run off of that 
   VLOG(5) << LOG_HEADER(0) << "module: " << module->name();
