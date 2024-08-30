@@ -259,6 +259,7 @@ DebugOptions DefaultDebugOptionsIgnoringFlags() {
 
   opts.set_xla_use_shardonnay(false);
 
+  opts.set_xla_auto_parallel_enable(false);
   opts.set_xla_auto_parallel_replicated_flops_prop(1.0);
   opts.set_xla_auto_parallel_memory_limit_bytes(0);
 
@@ -1709,6 +1710,11 @@ void MakeDebugOptionsFlags(std::vector<tsl::Flag>* flag_list,
       "xla_use_shardonnay",
       bool_setter_for(&DebugOptions::set_xla_use_shardonnay),
       debug_options->xla_use_shardonnay(), "Whether to use Shardonnay."));
+  flag_list->push_back(tsl::Flag(
+      "xla_auto_parallel_enable",
+      bool_setter_for(&DebugOptions::set_xla_auto_parallel_enable),
+      debug_options->xla_auto_parallel_enable(), 
+      "Whether to enable execution of AutoParallel pass."));
   flag_list->push_back(tsl::Flag(
       "xla_auto_parallel_replicated_flops_prop",
       float_setter_for(&DebugOptions::set_xla_auto_parallel_replicated_flops_prop),
