@@ -39,7 +39,7 @@ absl::StatusOr<bool> AutoParallelizer::Run(
     const absl::flat_hash_set<absl::string_view>& execution_threads) {
 
   if (!GetDebugOptionsFromFlags().xla_auto_parallel_enable()) {
-    VLOG(5) << "AutoParallellizer disabled. Enable via flag ."
+    VLOG(5) << "AutoParallellizer disabled. Enable via flag .";
     return false;
   }
 
