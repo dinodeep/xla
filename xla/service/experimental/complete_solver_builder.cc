@@ -158,6 +158,11 @@ void CompleteSolverBuilder::AddComputationConstraint(
 void CompleteSolverBuilder::AddMemoryConstraint(
     std::vector<std::shared_ptr<InstructionStrategies>> all_strats) {
 
+  // Do not create a constraint if there is no memory limit
+  if (memory_limit_ == 0) {
+    return;
+  }
+
   // iterate through all strategies and add up their memory contributes
   LinearExpr total_memory_usage;
 

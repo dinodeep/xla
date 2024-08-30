@@ -259,6 +259,9 @@ DebugOptions DefaultDebugOptionsIgnoringFlags() {
 
   opts.set_xla_use_shardonnay(false);
 
+  opts.set_xla_auto_parallel_replicated_flops_prop(1.0);
+  opts.set_xla_auto_parallel_memory_limit_bytes(0);
+
   return opts;
 }
 
@@ -1706,6 +1709,16 @@ void MakeDebugOptionsFlags(std::vector<tsl::Flag>* flag_list,
       "xla_use_shardonnay",
       bool_setter_for(&DebugOptions::set_xla_use_shardonnay),
       debug_options->xla_use_shardonnay(), "Whether to use Shardonnay."));
+  flag_list->push_back(tsl::Flag(
+      "xla_auto_parallel_replicated_flops_prop",
+      float_setter_for(&DebugOptions::set_xla_auto_parallel_replicated_flops_prop),
+      debug_options->xla_auto_parallel_replicated_flops_prop(),
+      "Max proportion of replicated flops for auto parallel sharding selector"));
+  flag_list->push_back(tsl::Flag(
+      "xla_auto_parallel_memory_limit_bytes",
+      int64_setter_for(&DebugOptions::set_xla_auto_parallel_memory_limit_bytes),
+      debug_options->xla_auto_parallel_memory_limit_bytes(),
+      "Memory limit for auto parallel sharding selector."));
 }  // NOLINT(readability/fn_size)
 
 // Allocates flag_values and flag_objects; this function must not be called more

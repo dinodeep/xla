@@ -803,7 +803,14 @@ message DebugOptions {
   // details.
   bool xla_use_shardonnay = 302;
 
-  // Next id: 304
+  // Proportion of replicated flops to allow for auto parallel solution
+  float xla_auto_parallel_replicated_flops_prop = 304;
+
+  // Maximum amount of memory that auto parallel solution can consume on
+  // a single device
+  int64 xla_auto_parallel_memory_limit_bytes = 305;
+
+  // Next id: 306
 
   // Extra options to pass to the compilation backend (e.g. LLVM); specific
   // interpretation of these values is left to the backend.

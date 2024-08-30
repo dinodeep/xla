@@ -55,7 +55,8 @@ private:
   double replicated_flops_prop_;
 
   // Maximum amount of bytes of memory that a device can handle at a moment
-  // of execution
+  // of execution. Note: if memory_limit_ is initialized to 0 bytes, then NO
+  // memory constraint will be enforced
   uint64_t memory_limit_;
 
   // returns a vector of the resharding matrices of the operand's to the current

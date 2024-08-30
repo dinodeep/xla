@@ -55,6 +55,7 @@ cc_library(
         "instruction_strategies",
         "sharding_strategy",
         "solver_builder",
+        "//xla:debug_options_flags",
         "//xla/hlo/ir:hlo",
         "@tsl//tsl/platform:logging",
     ]

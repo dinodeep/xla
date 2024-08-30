@@ -2,9 +2,11 @@
 #include "xla/service/experimental/sharding_strategy_selector.h"
 
 #include "xla/service/experimental/complete_solver_builder.h"
+#include "xla/debug_options_flags.h"
 #include "tsl/platform/logging.h"
 #include "tsl/platform/errors.h"
 #include "xla/service/experimental/fix_log.h"
+
 
 #define REPLICATED_FLOPS_PROP 0.2
 
@@ -21,9 +23,11 @@ bool ShardingStrategySelector::Select(std::unordered_map<HloInstruction*,
     std::shared_ptr<InstructionStrategies>> strat_map) {
 
   // initialize a builder
+  DebugOptions options = GetDebugOptionsFromFlags();
+
   CompleteSolverBuilder builder(
-    REPLICATED_FLOPS_PROP,
-    MEMORY_LIMIT_BYTES
+    (double) options.xla_auto_parallel_replicated_flops_prop(),
+    options.xla_auto_parallel_memory_limit_bytes()
   );
 
   // create variables and add constraints to produce valid selection of strats
