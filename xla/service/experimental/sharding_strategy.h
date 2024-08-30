@@ -52,7 +52,7 @@ public:
 
   // This function applies the result sharding and the operand shardings
   // to this instruction and all of it's operands, respectively.
-  void ApplyToInstructionsAndOperands(HloInstruction* instr);
+  void ApplyToInstructionAndOperands(HloInstruction* instr);
 
   // This function inserts a sharding strategy into an HloModule
   // Applies sharding strategy to root instruction of entry computation

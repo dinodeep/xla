@@ -59,7 +59,7 @@ public:
 
   // takes the index of sharding_strats_ and sets that strategy's
   // result sharding to the original instruction
-  void set_chosen_result_strat(int idx);
+  void set_chosen_result_sharding(int idx);
 
 private:
 
