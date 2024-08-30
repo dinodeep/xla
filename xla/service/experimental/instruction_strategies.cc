@@ -52,9 +52,9 @@ InstructionStrategies::InstructionStrategies(HloInstruction* orig_instr)
   return;
 }
 
-void InstructionStrategies::set_chosen_strat(int idx) {
+void InstructionStrategies::set_chosen_result_sharding(int idx) {
   assert(0 <= idx && idx < sharding_strats_.size());
-  sharding_strats_[idx].ApplyToInstruction(orig_instr_);
+  sharding_strats_[idx].ApplyToOnlyInstruction(orig_instr_);
   return;
 }
 

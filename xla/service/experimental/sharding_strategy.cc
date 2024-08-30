@@ -35,16 +35,23 @@ void ShardingStrategy::set_result_sharding(HloSharding result_sharding) {
   result_sharding_ = std::make_shared<HloSharding>(result_sharding);
 }
 
-void ShardingStrategy::ApplyToInstruction(HloInstruction* instr) {
+void ShardingStrategy::ApplyToOnlyInstruction(HloInstruction* instr) {
+  assert(result_sharding() != nullptr);
+
+  instr->set_sharding(result_sharding());
+
+  return;
+}
+
+
+void ShardingStrategy::ApplyToInstructionAndOperands(HloInstruction* instr) {
+  assert(result_sharding() != nullptr);
+
+  // apply to output of instruction 
+  ApplyToOnlyInstruction(instr);
+
+  // apply to it's operands
   int num_operands = instr->operand_count();
-
-  // if parameter instruction, then apply result sharding to instruction itself
-  if (instr->opcode() == HloOpcode::kParameter) {
-    instr->set_sharding(result_sharding());
-    return;
-  }
-
-  // otherwise, general instruction, apply to it's operands
   assert(num_operands == NumOpShardings());
   for (int i = 0; i < num_operands; i++) {
     instr->mutable_operand(i)->set_sharding(GetOpSharding(i));
@@ -55,8 +62,11 @@ void ShardingStrategy::ApplyToInstruction(HloInstruction* instr) {
 
 // Assumes that provided module is a single-instruction module
 void ShardingStrategy::ApplyToModule(HloModule* module) {
+  HloInstruction* root_instr = module->entry_computation()->root_instruction(); 
+
   ClearHloShardings(module);
-  ApplyToInstruction(module->entry_computation()->root_instruction()); 
+  ApplyToInstructionAndOperands(root_instr);
+
   return; 
 }
 

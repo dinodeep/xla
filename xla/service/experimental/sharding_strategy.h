@@ -45,13 +45,18 @@ public:
   // that make up this sharding strategy
   bool has_fully_sharded_op() const { return has_fully_sharded_op_; };
 
-  // This function applies the sharding strategy into the 
-  // HloInstruction pointed to by instr by specifying the shardings for the
-  // instructions operands
-  void ApplyToInstruction(HloInstruction* instr);
+  // This function applies the result of this sharding strategy on to the
+  // provided instruction. Note that the result_sharding variable must have
+  // been set prior to calling this instruction 
+  void ApplyToOnlyInstruction(HloInstruction* instr);
+
+  // This function applies the result sharding and the operand shardings
+  // to this instruction and all of it's operands, respectively.
+  void ApplyToInstructionAndOperands(HloInstruction* instr);
 
   // This function inserts a sharding strategy into an HloModule
   // Applies sharding strategy to root instruction of entry computation
+  // and all of it's operands
   void ApplyToModule(HloModule* module);
 
 private:
