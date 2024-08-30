@@ -54,7 +54,7 @@ InstructionStrategies::InstructionStrategies(HloInstruction* orig_instr)
 
 void InstructionStrategies::set_chosen_strat(int idx) {
   assert(0 <= idx && idx < sharding_strats_.size());
-  sharding_strats_[idx].ApplyToInstruction(orig_instr_);
+  sharding_strats_[idx].ApplyToOnlyInstruction(orig_instr_);
   return;
 }
 
