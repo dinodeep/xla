@@ -38,6 +38,7 @@ cc_library(
         "sharding_strategy_selector",
         "module_cost_evaluator",
         "resharding_cost_matrix",
+        "//xla:debug_options_flags",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/status:status",
