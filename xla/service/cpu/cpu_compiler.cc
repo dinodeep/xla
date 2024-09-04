@@ -427,16 +427,6 @@ void AddHloVerifier(HloPassPipeline* pipeline, HloVerifierOpts&& opts = {},
 
 }  // namespace
 
-// runs a simple pipeline that will create a pass and run the auto parallel pass
-void RunDummyPipeline(HloModule* module) {
-
-  HloPassPipeline pipeline("dummy-pipeline");
-  pipeline.AddPass<AutoParallelizer>();
-
-  VLOG(2) << "Running dummy HloModulePass";
-  TF_CHECK_OK(pipeline.Run(module).status());
-}
-
 absl::Status CpuCompiler::RunHloPassesThroughLayoutAssn(
     HloModule* module, bool is_aot_compile,
     LLVMTargetMachineFeatures* target_machine_features, bool is_mlir_compile) {
@@ -447,8 +437,6 @@ absl::Status CpuCompiler::RunHloPassesThroughLayoutAssn(
   VLOG(2) << "num_partitions=" << module->config().num_partitions();
   VLOG(2) << "replica_count=" << module->config().replica_count();
   VLOG(2) << "use_spmd_partitioning=" << module->config().use_spmd_partitioning();
-
-  RunDummyPipeline(module);
 
   if (num_partitions > 1) {
     if (!module->config().use_spmd_partitioning()) {
@@ -463,6 +451,9 @@ absl::Status CpuCompiler::RunHloPassesThroughLayoutAssn(
     spmd_pipeline.AddPass<CallInliner>();
     spmd_pipeline.AddPass<ZeroSizedHloElimination>();
     spmd_pipeline.AddPass<ConditionalCanonicalizer>();
+
+    // perform auto sharding if enabled
+    spmd_pipeline.AddPass<AutoParallelizer>();
 
     spmd_pipeline.AddPass<ShardingPropagation>(
         /*is_spmd=*/true, /*propagate_metadata=*/false,
