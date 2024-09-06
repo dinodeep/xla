@@ -126,6 +126,7 @@ limitations under the License.
 #include "xla/service/eigh_expander.h"
 #include "xla/service/executable.h"
 #include "xla/service/experimental/auto_parallel.h"
+#include "xla/hlo/experimental/auto_sharding/auto_sharding.h"
 #include "xla/service/flatten_call_graph.h"
 #include "xla/service/float_normalization.h"
 #include "xla/service/float_support.h"
@@ -425,6 +426,16 @@ void AddHloVerifier(HloPassPipeline* pipeline, HloVerifierOpts&& opts = {},
   }
 }
 
+AutoShardingOption GetDefaultAutoShardingOption() {
+  AutoShardingOption option;
+  option.enable = true;
+  option.preserve_shardings = AutoShardingOption::PreserveShardingsType::kRemoveAllShardings;
+  option.device_mesh_shape = { 2, 4 };
+  option.solve_nd_sharding_iteratively = false;
+
+  return option;
+}
+
 }  // namespace
 
 absl::Status CpuCompiler::RunHloPassesThroughLayoutAssn(
@@ -453,7 +464,7 @@ absl::Status CpuCompiler::RunHloPassesThroughLayoutAssn(
     spmd_pipeline.AddPass<ConditionalCanonicalizer>();
 
     // perform auto sharding if enabled
-    spmd_pipeline.AddPass<AutoParallelizer>();
+    spmd_pipeline.AddPass<AutoSharding>(GetDefaultAutoShardingOption());
 
     spmd_pipeline.AddPass<ShardingPropagation>(
         /*is_spmd=*/true, /*propagate_metadata=*/false,
