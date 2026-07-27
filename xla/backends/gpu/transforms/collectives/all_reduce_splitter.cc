@@ -257,7 +257,8 @@ static bool IsProfitableToSplit(const ARReplicaGroupMap& replica_map,
 static RewriteDecision CanRewrite(const HloModule& module,
                                   const ARReplicaGroupMap& replica_map,
                                   HloComputation& computation,
-                                  HloInstruction& instruction) {
+                                  HloInstruction& instruction,
+                                  bool ignore_profitability_check) {
   // We rely on SPMD partitioning enabled, thus asserting `replica_count` = 1.
   const HloModuleConfig& config = module.config();
   if (config.use_auto_spmd_partitioning() || !config.use_spmd_partitioning() ||
@@ -357,7 +358,7 @@ static RewriteDecision CanRewrite(const HloModule& module,
     };
   }
 
-  if (!IsProfitableToSplit(replica_map, spec)) {
+  if (!ignore_profitability_check && !IsProfitableToSplit(replica_map, spec)) {
     return RewriteInfeasibleReason{
         &instruction,
         "Splitting is not profitable.",
@@ -414,9 +415,11 @@ static absl::StatusOr<bool> SplitAllReduce(const HloModuleConfig& config,
 static absl::StatusOr<bool> SplitAllReduce(const HloModule& module,
                                            const ARReplicaGroupMap& replica_map,
                                            HloComputation& computation,
-                                           HloInstruction& instruction) {
+                                           HloInstruction& instruction,
+                                           bool ignore_profitability_check) {
   RewriteDecision spec =
-      CanRewrite(module, replica_map, computation, instruction);
+      CanRewrite(module, replica_map, computation, instruction,
+                 ignore_profitability_check);
   if (std::holds_alternative<RewriteInfeasibleReason>(spec)) {
     auto reason = std::get<RewriteInfeasibleReason>(spec);
     VLOG(1) << "Cannot process {" << reason.ar->ToString()
@@ -435,8 +438,10 @@ absl::StatusOr<bool> AllReduceSplitter::RunImpl(
   for (auto* computation : module->computations(execution_threads)) {
     ARReplicaGroupMap replica_map = GetReplicaGroupsMap(*computation);
     for (HloInstruction* instr : computation->MakeInstructionPostOrder()) {
-      ASSIGN_OR_RETURN(bool rewritten, SplitAllReduce(*module, replica_map,
-                                                      *computation, *instr));
+      ASSIGN_OR_RETURN(
+          bool rewritten,
+          SplitAllReduce(*module, replica_map, *computation, *instr,
+                         ignore_profitability_check_));
       changed |= rewritten;
     }
   }

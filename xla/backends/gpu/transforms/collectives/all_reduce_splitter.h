@@ -64,12 +64,18 @@ namespace xla {
 //
 class AllReduceSplitter : public HloModulePass {
  public:
+  explicit AllReduceSplitter(bool ignore_profitability_check = false)
+      : ignore_profitability_check_(ignore_profitability_check) {}
+
   absl::string_view name() const override { return "all-reduce-splitter"; }
 
  protected:
   absl::StatusOr<bool> RunImpl(
       HloModule* module,
       const absl::flat_hash_set<absl::string_view>& execution_threads) override;
+
+ private:
+  const bool ignore_profitability_check_;
 };
 
 }  // namespace xla
