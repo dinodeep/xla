@@ -592,13 +592,12 @@ LegalizeSchedulingAnnotations::Config SchedulingAnnotationsConfig() {
 
 bool IsHostShape(const Shape& shape) {
   return shape.IsArray() && shape.has_layout() &&
-         shape.layout().memory_space() ==
-             static_cast<int64_t>(stream_executor::MemorySpace::kHost);
+         shape.layout().memory_space() == Layout::kHostMemorySpace;
 }
 
 bool IsDUSWithHost(const HloInstruction& instr) {
   return instr.opcode() == HloOpcode::kDynamicUpdateSlice &&
-         (IsHostShape(instr.operand(0)->shape()) || IsHostShape(instr->shape()));
+         (IsHostShape(instr.operand(0).shape()) || IsHostShape(instr.shape()));
 }
 
 // Delays MoveToHostAsyncStart as late as possible
