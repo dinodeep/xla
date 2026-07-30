@@ -595,9 +595,9 @@ bool IsHostShape(const Shape& shape) {
          shape.layout().memory_space() == Layout::kHostMemorySpace;
 }
 
-bool IsDUSWithHost(const HloInstruction& instr) {
+bool IsDUSWithHost(const HloInstruction* instr) {
   return instr.opcode() == HloOpcode::kDynamicUpdateSlice &&
-         (IsHostShape(instr.operand(0).shape()) || IsHostShape(instr.shape()));
+         (IsHostShape(instr->operand(0)->shape()) || IsHostShape(instr->shape()));
 }
 
 // Delays MoveToHostAsyncStart as late as possible
