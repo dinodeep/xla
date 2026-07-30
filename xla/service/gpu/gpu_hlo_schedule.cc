@@ -596,7 +596,7 @@ bool IsHostShape(const Shape& shape) {
 }
 
 bool IsDUSWithHost(const HloInstruction* instr) {
-  return instr.opcode() == HloOpcode::kDynamicUpdateSlice &&
+  return instr->opcode() == HloOpcode::kDynamicUpdateSlice &&
          (IsHostShape(instr->operand(0)->shape()) || IsHostShape(instr->shape()));
 }
 
