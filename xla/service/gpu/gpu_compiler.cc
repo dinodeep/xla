@@ -333,6 +333,7 @@ limitations under the License.
 #include "xla/service/spmd/schedule_aware_collective_ops_cse.h"
 #include "xla/service/spmd/shardy/shardy_xla_pass.h"
 #include "xla/service/topk_rewriter.h"
+#include "xla/service/while_loop_accumulator_folding.h"
 #include "xla/service/while_loop_constant_sinking.h"
 #include "xla/service/while_loop_simplifier.h"
 #include "xla/service/xla_transform.h"
@@ -761,6 +762,11 @@ absl::Status RunSPMDPasses(
           /*runSdyShardingPropagation=*/false);
     }
     sharding_removal_pipeline.AddPass<NullaryFunctionWrapInliner>();
+    if (hlo_module->config()
+            .debug_options()
+            .xla_gpu_enable_while_loop_accumulator_folding()) {
+      sharding_removal_pipeline.AddPass<WhileLoopAccumulatorFolding>();
+    }
     sharding_removal_pipeline.AddPass<HloDCE>();
     return sharding_removal_pipeline
         .Run(hlo_module, {HloInstruction::kMainExecutionThread})

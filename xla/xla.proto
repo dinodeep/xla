@@ -912,6 +912,11 @@ message DebugOptions {
   // Enable double buffering for loops.
   optional bool xla_gpu_enable_while_loop_double_buffering = 248;
 
+  // Fold the addition of a scan's stacked output into a running accumulator
+  // into the scan, so that the scan writes into the accumulator in place
+  // (WhileLoopAccumulatorFolding).
+  optional bool xla_gpu_enable_while_loop_accumulator_folding = 563;
+
   // Enable hoisting of reduce-scatter out of while loops.
   optional bool xla_gpu_enable_while_loop_reduce_scatter_code_motion = 203;
 
@@ -1982,7 +1987,7 @@ message DebugOptions {
   // (ScanRewriterTriton).
   optional bool xla_gpu_experimental_enable_triton_scan = 562;
 
-  // Next id: 563
+  // Next id: 564
 
   // Extra options to pass to the compilation backend (e.g. LLVM); specific
   // interpretation of these values is left to the backend.
