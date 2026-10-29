@@ -51,6 +51,7 @@ limitations under the License.
 #include "xla/service/spmd/shardy/constants.h"
 #include "xla/service/spmd/shardy/shardy_xla_pass.h"
 #include "xla/service/spmd/stateful_rng_spmd_partitioner.h"
+#include "xla/service/while_loop_accumulator_folding.h"
 #include "xla/service/while_loop_constant_sinking.h"
 #include "xla/service/while_loop_simplifier.h"
 #include "xla/stream_executor/device_description.h"
@@ -116,6 +117,13 @@ void AddSPMDPasses(
     spmd_pipeline.AddPass<ShardingPropagation>(
         /*is_spmd=*/true, /*propagate_metadata=*/false,
         config.allow_spmd_sharding_propagation_to_output());
+  }
+  // Runs on the propagated, still-global module, so that the partitioner
+  // handles the per-iteration updates it creates.
+  if (hlo_module->config()
+          .debug_options()
+          .xla_gpu_enable_while_loop_accumulator_folding()) {
+    spmd_pipeline.AddPass<WhileLoopAccumulatorFolding>();
   }
   std::optional<int64_t> oper_size_threshold = std::nullopt;
   if (hlo_module->config()

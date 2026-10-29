@@ -41,7 +41,6 @@ limitations under the License.
 #include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
-#include "google/protobuf/text_format.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/AsmParser/Parser.h"
 #include "llvm/IR/DataLayout.h"
@@ -55,15 +54,9 @@ limitations under the License.
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/Support/LLVM.h"
+#include "google/protobuf/text_format.h"
 #include "riegeli/bytes/string_reader.h"
 #include "riegeli/bytes/string_writer.h"
-#include "tsl/platform/cpu_info.h"
-#include "tsl/platform/numbers.h"
-#include "tsl/platform/path.h"
-#include "tsl/platform/platform.h"
-#include "tsl/platform/protobuf.h"  // IWYU pragma: keep
-#include "tsl/profiler/lib/scoped_annotation.h"
-#include "tsl/profiler/lib/traceme.h"
 #include "xla/backends/autotuner/autotuning.pb.h"
 #include "xla/backends/autotuner/codegen_backend.h"
 #include "xla/backends/autotuner/in_memory_store.h"
@@ -334,6 +327,7 @@ limitations under the License.
 #include "xla/service/spmd/schedule_aware_collective_ops_cse.h"
 #include "xla/service/spmd/shardy/shardy_xla_pass.h"
 #include "xla/service/topk_rewriter.h"
+#include "xla/service/while_loop_accumulator_folding.h"
 #include "xla/service/while_loop_constant_sinking.h"
 #include "xla/service/while_loop_simplifier.h"
 #include "xla/service/xla_transform.h"
@@ -360,6 +354,13 @@ limitations under the License.
 #include "xla/util/split_proto/split_proto_reader.h"
 #include "xla/xla.pb.h"
 #include "xla/xla_data.pb.h"
+#include "tsl/platform/cpu_info.h"
+#include "tsl/platform/numbers.h"
+#include "tsl/platform/path.h"
+#include "tsl/platform/platform.h"
+#include "tsl/platform/protobuf.h"  // IWYU pragma: keep
+#include "tsl/profiler/lib/scoped_annotation.h"
+#include "tsl/profiler/lib/traceme.h"
 
 namespace xla {
 namespace gpu {
@@ -763,6 +764,11 @@ absl::Status RunSPMDPasses(
           /*runSdyShardingPropagation=*/false);
     }
     sharding_removal_pipeline.AddPass<NullaryFunctionWrapInliner>();
+    if (hlo_module->config()
+            .debug_options()
+            .xla_gpu_enable_while_loop_accumulator_folding()) {
+      sharding_removal_pipeline.AddPass<WhileLoopAccumulatorFolding>();
+    }
     sharding_removal_pipeline.AddPass<HloDCE>();
     return sharding_removal_pipeline
         .Run(hlo_module, {HloInstruction::kMainExecutionThread})

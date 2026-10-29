@@ -43,7 +43,6 @@ limitations under the License.
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "tsl/platform/protobuf.h"
 #include "xla/hlo/ir/backend_config.h"
 #include "xla/hlo/ir/dfs_hlo_visitor.h"
 #include "xla/hlo/ir/hlo_clone_context.h"
@@ -62,6 +61,7 @@ limitations under the License.
 #include "xla/tsl/lib/gtl/iterator_range.h"
 #include "xla/util.h"
 #include "xla/xla_data.pb.h"
+#include "tsl/platform/protobuf.h"
 
 namespace xla {
 
